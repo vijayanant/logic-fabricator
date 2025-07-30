@@ -96,18 +96,21 @@ class BeliefSystem:
         self.contradictions = []
 
     def add_statement(self, new_statement: Statement):
-        # Check for contradictions with existing statements
+        is_contradictory = False
         for existing_statement in self.statements:
             if self.contradiction_engine.detect(new_statement, existing_statement):
                 self.contradictions.append(
                     ContradictionRecord(new_statement, existing_statement)
                 )  # Store the contradictory pair
+                is_contradictory = True
 
-        self.statements.append(new_statement)
-        # Apply rules to infer new statements
-        for rule in self.rules:
-            bindings = rule.applies_to(new_statement)
-            if bindings is not None:
-                inferred_statement = rule.generate_consequence(bindings)
-                # For now, just add it. Contradiction detection will come later.
-                self.statements.append(inferred_statement)
+        if not is_contradictory:
+            self.statements.append(new_statement)
+            # Apply rules to infer new statements
+            for rule in self.rules:
+                bindings = rule.applies_to(new_statement)
+                if bindings is not None:
+                    inferred_statement = rule.generate_consequence(bindings)
+                    # For now, just add it. Contradiction detection will come later.
+                    self.statements.append(inferred_statement)
+

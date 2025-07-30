@@ -137,3 +137,26 @@ def test_belief_system_stores_contradiction_record():
     assert isinstance(contradiction_record, ContradictionRecord)
     assert contradiction_record.statement1 == statement2
     assert contradiction_record.statement2 == statement1
+
+
+def test_belief_system_prevents_contradictory_statement_addition():
+    # This test verifies that a contradictory statement is NOT added
+    # to the main statements list, but IS recorded as a contradiction.
+    statement1 = Statement(verb="is", terms=["Socrates", "alive"])
+    statement2 = Statement(verb="is", terms=["Socrates", "dead"])
+
+    engine = ContradictionEngine()
+    belief_system = BeliefSystem(rules=[], contradiction_engine=engine)
+
+    belief_system.add_statement(statement1)
+    belief_system.add_statement(statement2)
+
+    # Assert that the contradictory statement is NOT in the main list
+    assert statement2 not in belief_system.statements
+
+    # Assert that the contradiction IS recorded
+    assert len(belief_system.contradictions) == 1
+    contradiction_record = belief_system.contradictions[0]
+    assert contradiction_record.statement1 == statement2
+    assert contradiction_record.statement2 == statement1
+
