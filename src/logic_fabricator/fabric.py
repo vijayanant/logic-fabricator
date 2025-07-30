@@ -3,6 +3,7 @@ class Statement:
         self.verb = verb
         self.terms = terms
 
+
 class Condition:
     def __init__(self, verb: str, terms: list[str]):
         self.verb = verb
@@ -22,12 +23,13 @@ class Condition:
             cond_term = self.terms[i]
             stmt_term = statement.terms[i]
 
-            if cond_term.startswith('?'):  # It's a variable
+            if cond_term.startswith("?"):  # It's a variable
                 bindings[cond_term] = stmt_term
             elif cond_term != stmt_term:  # Mismatch for literal terms
                 return None
-        
+
         return bindings
+
 
 class Rule:
     def __init__(self, condition: Condition, consequence: Statement):
@@ -41,8 +43,22 @@ class Rule:
         new_verb = self.consequence.verb
         new_terms = []
         for term in self.consequence.terms:
-            if term.startswith('?'):
-                new_terms.append(bindings.get(term, term)) # Use bound value, or original term if not found
+            if term.startswith("?"):
+                new_terms.append(
+                    bindings.get(term, term)
+                )  # Use bound value, or original term if not found
             else:
                 new_terms.append(term)
         return Statement(verb=new_verb, terms=new_terms)
+
+
+class ContradictionEngine:
+    def detect(self, s1: Statement, s2: Statement) -> bool:
+        # Simple contradiction: same verb, same first term (subject), different second term (object)
+        if (
+            s1.verb == s2.verb
+            and s1.terms[0] == s2.terms[0]
+            and s1.terms[1] != s2.terms[1]
+        ):
+            return True
+        return False

@@ -16,7 +16,7 @@ def test_rule_applies_to_statement_by_verb():
     statement = Statement(verb="is", terms=[])
     rule = Rule(
         condition=Condition(verb="is", terms=[]),
-        consequence=Statement(verb="", terms=[]) # Placeholder consequence
+        consequence=Statement(verb="", terms=[]),  # Placeholder consequence
     )  # Use Condition object with empty terms
 
     assert rule.applies_to(statement) is not None
@@ -65,3 +65,17 @@ def test_rule_generates_consequence_from_bindings():
     expected_statement = Statement(verb="is", terms=["Socrates", "mortal"])
     assert generated_statement.verb == expected_statement.verb
     assert generated_statement.terms == expected_statement.terms
+
+
+def test_contradiction_detection_simple():
+    # This test proposes a simple contradiction detection mechanism.
+    # It will fail because the ContradictionEngine and its logic do not yet exist.
+    statement1 = Statement(verb="is", terms=["Socrates", "alive"])
+    statement2 = Statement(verb="is", terms=["Socrates", "dead"])
+
+    # We'll assume a ContradictionEngine class for now
+    from logic_fabricator.fabric import ContradictionEngine
+
+    engine = ContradictionEngine()
+
+    assert engine.detect(statement1, statement2) is True
