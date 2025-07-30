@@ -11,6 +11,7 @@ class Statement:
     def __hash__(self):
         return hash((self.verb, tuple(self.terms)))
 
+
 class Condition:
     def __init__(self, verb: str, terms: list[str]):
         self.verb = verb
@@ -30,12 +31,13 @@ class Condition:
             cond_term = self.terms[i]
             stmt_term = statement.terms[i]
 
-            if cond_term.startswith('?'):  # It's a variable
+            if cond_term.startswith("?"):  # It's a variable
                 bindings[cond_term] = stmt_term
             elif cond_term != stmt_term:  # Mismatch for literal terms
                 return None
-        
+
         return bindings
+
 
 class Rule:
     def __init__(self, condition: Condition, consequence: Statement):
@@ -49,18 +51,42 @@ class Rule:
         new_verb = self.consequence.verb
         new_terms = []
         for term in self.consequence.terms:
-            if term.startswith('?'):
-                new_terms.append(bindings.get(term, term)) # Use bound value, or original term if not found
+            if term.startswith("?"):
+                new_terms.append(
+                    bindings.get(term, term)
+                )  # Use bound value, or original term if not found
             else:
                 new_terms.append(term)
         return Statement(verb=new_verb, terms=new_terms)
 
+
 class ContradictionEngine:
     def detect(self, s1: Statement, s2: Statement) -> bool:
         # Simple contradiction: same verb, same first term (subject), different second term (object)
-        if s1.verb == s2.verb and s1.terms[0] == s2.terms[0] and s1.terms[1] != s2.terms[1]:
+        if (
+            s1.verb == s2.verb
+            and s1.terms[0] == s2.terms[0]
+            and s1.terms[1] != s2.terms[1]
+        ):
             return True
         return False
+
+
+class ContradictionRecord:
+    def __init__(self, statement1: Statement, statement2: Statement):
+        self.statement1 = statement1
+        self.statement2 = statement2
+
+    def __eq__(self, other):
+        if not isinstance(other, ContradictionRecord):
+            return NotImplemented
+        return (
+            self.statement1 == other.statement1 and self.statement2 == other.statement2
+        )
+
+    def __hash__(self):
+        return hash((self.statement1, self.statement2))
+
 
 class BeliefSystem:
     def __init__(self, rules: list[Rule], contradiction_engine: ContradictionEngine):
@@ -73,7 +99,9 @@ class BeliefSystem:
         # Check for contradictions with existing statements
         for existing_statement in self.statements:
             if self.contradiction_engine.detect(new_statement, existing_statement):
-                self.contradictions.append((new_statement, existing_statement)) # Store the contradictory pair
+                self.contradictions.append(
+                    ContradictionRecord(new_statement, existing_statement)
+                )  # Store the contradictory pair
 
         self.statements.append(new_statement)
         # Apply rules to infer new statements
