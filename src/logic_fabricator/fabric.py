@@ -3,7 +3,6 @@ class Statement:
         self.verb = verb
         self.terms = terms
 
-
 class Condition:
     def __init__(self, verb: str, terms: list[str]):
         self.verb = verb
@@ -23,18 +22,27 @@ class Condition:
             cond_term = self.terms[i]
             stmt_term = statement.terms[i]
 
-            if cond_term.startswith("?"):  # It's a variable
+            if cond_term.startswith('?'):  # It's a variable
                 bindings[cond_term] = stmt_term
             elif cond_term != stmt_term:  # Mismatch for literal terms
                 return None
-
+        
         return bindings
 
-
 class Rule:
-    def __init__(self, condition: Condition):
+    def __init__(self, condition: Condition, consequence: Statement):
         self.condition = condition
+        self.consequence = consequence
 
     def applies_to(self, statement: Statement) -> dict | None:
         return self.condition.matches(statement)
 
+    def generate_consequence(self, bindings: dict) -> Statement:
+        new_verb = self.consequence.verb
+        new_terms = []
+        for term in self.consequence.terms:
+            if term.startswith('?'):
+                new_terms.append(bindings.get(term, term)) # Use bound value, or original term if not found
+            else:
+                new_terms.append(term)
+        return Statement(verb=new_verb, terms=new_terms)

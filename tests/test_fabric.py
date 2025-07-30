@@ -15,7 +15,8 @@ def test_rule_applies_to_statement_by_verb():
     # and the applies_to method is not implemented.
     statement = Statement(verb="is", terms=[])
     rule = Rule(
-        condition=Condition(verb="is", terms=[])
+        condition=Condition(verb="is", terms=[]),
+        consequence=Statement(verb="", terms=[]) # Placeholder consequence
     )  # Use Condition object with empty terms
 
     assert rule.applies_to(statement) is not None
@@ -26,7 +27,7 @@ def test_rule_applies_with_variable_binding():
     # when a variable in the condition matches a term in the statement.
     statement = Statement(verb="is", terms=["Socrates", "a man"])
     condition = Condition(verb="is", terms=["?x", "a man"])
-    rule = Rule(condition=condition)
+    rule = Rule(condition=condition, consequence=Statement(verb="", terms=[]))
 
     bindings = rule.applies_to(statement)
     assert bindings == {"?x": "Socrates"}
@@ -43,8 +44,24 @@ def test_rule_applies_with_fewer_condition_terms():
     # at the beginning of the statement's terms.
     statement = Statement(verb="is", terms=["Socrates", "a man", "wise"])
     condition = Condition(verb="is", terms=["?x", "a man"])
-    rule = Rule(condition=condition)
+    rule = Rule(condition=condition, consequence=Statement(verb="", terms=[]))
 
     bindings = rule.applies_to(statement)
     assert bindings == {"?x": "Socrates"}
 
+
+def test_rule_generates_consequence_from_bindings():
+    # This test verifies that a Rule can generate a new Statement
+    # based on its consequence template and extracted bindings.
+    statement = Statement(verb="is", terms=["Socrates", "a man"])
+    condition = Condition(verb="is", terms=["?x", "a man"])
+    consequence_template = Statement(verb="is", terms=["?x", "mortal"])
+    rule = Rule(condition=condition, consequence=consequence_template)
+
+    bindings = rule.applies_to(statement)
+    assert bindings == {"?x": "Socrates"}
+
+    generated_statement = rule.generate_consequence(bindings)
+    expected_statement = Statement(verb="is", terms=["Socrates", "mortal"])
+    assert generated_statement.verb == expected_statement.verb
+    assert generated_statement.terms == expected_statement.terms
