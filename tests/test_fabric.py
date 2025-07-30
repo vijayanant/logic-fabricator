@@ -93,10 +93,26 @@ def test_belief_system_infers_statement():
     rule_consequence = Statement(verb="is", terms=["?x", "mortal"])
     rule = Rule(condition=rule_condition, consequence=rule_consequence)
 
-    belief_system = BeliefSystem(rules=[rule])
+    belief_system = BeliefSystem(rules=[rule], contradiction_engine=ContradictionEngine())
     belief_system.add_statement(initial_statement)
 
     # The system should process the statement and infer the consequence
     inferred_statement = Statement(verb="is", terms=["Socrates", "mortal"])
     assert inferred_statement in belief_system.statements
 
+
+def test_belief_system_detects_contradiction():
+    # This test verifies that the BeliefSystem detects contradictions
+    # when new statements are added.
+    statement1 = Statement(verb="is", terms=["Socrates", "alive"])
+    statement2 = Statement(verb="is", terms=["Socrates", "dead"])
+
+    engine = ContradictionEngine()
+    belief_system = BeliefSystem(rules=[], contradiction_engine=engine)
+
+    belief_system.add_statement(statement1)
+    belief_system.add_statement(statement2)
+
+    # Assert that the contradiction was detected and stored
+    assert len(belief_system.contradictions) == 1
+    # For now, we'll just check the count. Later, we can assert the content of the contradiction.
