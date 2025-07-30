@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local configs & envs
+.env
+.vscode/
+.idea/
+.gemini/
+
+# Tests (optional: depends if tests run inside container)
+#tests/
+
+# Project junk
+*.log
+*.DS_Store
+*.egg-info/
+*.tar
+*.img
+
+# Only copy poetry files, src, and required build files
+#poetry.lock
+#pyproject.toml
+Dockerfile
+docker-compose.yml

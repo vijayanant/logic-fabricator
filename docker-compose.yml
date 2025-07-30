@@ -1,0 +1,14 @@
+# docker-compose.yml
+version: '3.9'
+
+services:
+  dev:
+    build: .
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./requirements.txt:/app/requirements.txt
+      - ./pytest.ini:/app/pytest.ini
+    working_dir: /app
+    tty: true
+

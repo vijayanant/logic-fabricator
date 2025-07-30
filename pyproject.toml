@@ -1,0 +1,21 @@
+[project]
+name = "logic-fabricator"
+version = "0.1.0"
+description = "The only project where contradictions are a feature, not a bug."
+authors = [{ name = "Vijay Anant", email = "vijay.hassan@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = []
+
+[tool.poetry]
+packages = [{ include = "logic_fabricator", from = "src" }]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

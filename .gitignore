@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtualenvs
+.env/
+.venv/
+
+# Poetry lock (optional if you want full reproducibility)
+# poetry.lock
+
+# Logs, coverage, test output
+*.log
+.coverage
+htmlcov/
+.cache/
+pytest_cache/
+
+# VSCode / editor stuff
+.vscode/
+.idea/
+
+# Docker
+*.tar
+*.img
+
+# Misc
+.DS_Store
+.gemini/
