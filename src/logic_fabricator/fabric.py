@@ -3,6 +3,14 @@ class Statement:
         self.verb = verb
         self.terms = terms
 
+    def __eq__(self, other):
+        if not isinstance(other, Statement):
+            return NotImplemented
+        return self.verb == other.verb and self.terms == other.terms
+
+    def __hash__(self):
+        return hash((self.verb, tuple(self.terms)))
+
 
 class Condition:
     def __init__(self, verb: str, terms: list[str]):
@@ -62,3 +70,19 @@ class ContradictionEngine:
         ):
             return True
         return False
+
+
+class BeliefSystem:
+    def __init__(self, rules: list[Rule]):
+        self.rules = rules
+        self.statements = []
+
+    def add_statement(self, new_statement: Statement):
+        self.statements.append(new_statement)
+        # Apply rules to infer new statements
+        for rule in self.rules:
+            bindings = rule.applies_to(new_statement)
+            if bindings is not None:
+                inferred_statement = rule.generate_consequence(bindings)
+                # For now, just add it. Contradiction detection will come later.
+                self.statements.append(inferred_statement)

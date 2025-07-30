@@ -1,4 +1,10 @@
-from logic_fabricator.fabric import Statement, Rule, Condition
+from logic_fabricator.fabric import (
+    Statement,
+    Rule,
+    Condition,
+    ContradictionEngine,
+    BeliefSystem,
+)
 
 
 def test_statement_has_structure():
@@ -74,8 +80,23 @@ def test_contradiction_detection_simple():
     statement2 = Statement(verb="is", terms=["Socrates", "dead"])
 
     # We'll assume a ContradictionEngine class for now
-    from logic_fabricator.fabric import ContradictionEngine
-
     engine = ContradictionEngine()
 
     assert engine.detect(statement1, statement2) is True
+
+
+def test_belief_system_infers_statement():
+    # This test verifies that the BeliefSystem can infer new statements
+    # by applying rules to its existing statements.
+    initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
+    rule_condition = Condition(verb="is", terms=["?x", "a man"])
+    rule_consequence = Statement(verb="is", terms=["?x", "mortal"])
+    rule = Rule(condition=rule_condition, consequence=rule_consequence)
+
+    belief_system = BeliefSystem(rules=[rule])
+    belief_system.add_statement(initial_statement)
+
+    # The system should process the statement and infer the consequence
+    inferred_statement = Statement(verb="is", terms=["Socrates", "mortal"])
+    assert inferred_statement in belief_system.statements
+
