@@ -13,11 +13,16 @@ class Condition:
         if self.verb != statement.verb:
             return None
 
-        if len(self.terms) != len(statement.terms):
+        # Ensure the statement has at least as many terms as the condition
+        if len(statement.terms) < len(self.terms):
             return None
 
         bindings = {}
-        for cond_term, stmt_term in zip(self.terms, statement.terms):
+        # Iterate only up to the length of the condition's terms
+        for i in range(len(self.terms)):
+            cond_term = self.terms[i]
+            stmt_term = statement.terms[i]
+
             if cond_term.startswith("?"):  # It's a variable
                 bindings[cond_term] = stmt_term
             elif cond_term != stmt_term:  # Mismatch for literal terms
@@ -32,3 +37,4 @@ class Rule:
 
     def applies_to(self, statement: Statement) -> dict | None:
         return self.condition.matches(statement)
+

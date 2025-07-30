@@ -35,3 +35,16 @@ def test_rule_applies_with_variable_binding():
     statement_no_match = Statement(verb="is", terms=["Plato", "a philosopher"])
     bindings_no_match = rule.applies_to(statement_no_match)
     assert bindings_no_match is None
+
+
+def test_rule_applies_with_fewer_condition_terms():
+    # This test challenges the strict term count matching.
+    # A rule with fewer terms should still match if its terms are present
+    # at the beginning of the statement's terms.
+    statement = Statement(verb="is", terms=["Socrates", "a man", "wise"])
+    condition = Condition(verb="is", terms=["?x", "a man"])
+    rule = Rule(condition=condition)
+
+    bindings = rule.applies_to(statement)
+    assert bindings == {"?x": "Socrates"}
+
