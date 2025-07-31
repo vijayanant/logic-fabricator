@@ -10,9 +10,18 @@ You define belief systems. You simulate statements. You contradict yourself... *
 
 ## 🚧 Project Status
 
-We’re just getting started. This repo is following **strict TDD**, so the codebase will evolve slowly and deliberately. Nothing exists unless a test demands it.
+The core logic engine is now functional and taking shape. While we are still in the early stages of fabrication, the foundational components are in place.
 
-If you're reading this in the early stages: welcome. Expect minimal surface area and maximum weirdness.
+This repo follows **strict TDD**, so the codebase evolves slowly and deliberately. Nothing exists unless a test demands it.
+
+### ✨ Current Capabilities
+
+The core logic engine is now functional. It currently supports:
+
+-   **Structured Logic:** Defining `Rules` and `Statements` with conditions and consequences.
+-   **Contradiction Detection:** Identifying and handling direct contradictions between statements.
+-   **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
+-   **Traceability:** The results of a simulation include a record of which rules were applied to reach the conclusion.
 
 ---
 
