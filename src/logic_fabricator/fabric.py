@@ -169,6 +169,7 @@ class BeliefSystem:
         self.statements = set()
         self.contradiction_engine = contradiction_engine
         self.contradictions = []
+        self.mcp_records = [] # Initialize MCP records
 
     def add_statement(self, new_statement: Statement) -> bool:
         is_contradictory = False
@@ -186,6 +187,8 @@ class BeliefSystem:
         return not is_contradictory
 
     def simulate(self, initial_statements: list["Statement"]):
+        # Clear statements for a fresh simulation run
+        self.statements = set()
         for statement in initial_statements:
             self.add_statement(statement)
 
@@ -204,13 +207,47 @@ class BeliefSystem:
             if not newly_inferred_this_pass:
                 break
 
-        return SimulationResult(
-            derived_facts=list(self.statements - set(initial_statements)),
+        derived_facts = list(self.statements - set(initial_statements))
+        simulation_result = SimulationResult(
+            derived_facts=derived_facts,
             applied_rules=list(applied_rules),
         )
+        
+        # Store the simulation record in MCP
+        self.mcp_records.append(SimulationRecord(
+            initial_statements=initial_statements,
+            derived_facts=derived_facts,
+            applied_rules=list(applied_rules)
+        ))
+
+        return simulation_result
 
 
 class SimulationResult:
     def __init__(self, derived_facts: list[Statement], applied_rules: list[Rule]):
         self.derived_facts = derived_facts
         self.applied_rules = applied_rules
+
+
+class SimulationRecord:
+    def __init__(self, initial_statements: list[Statement], derived_facts: list[Statement], applied_rules: list[Rule]):
+        self.initial_statements = initial_statements
+        self.derived_facts = derived_facts
+        self.applied_rules = applied_rules
+
+    def __eq__(self, other):
+        if not isinstance(other, SimulationRecord):
+            return NotImplemented
+        return (
+            self.initial_statements == other.initial_statements
+            and self.derived_facts == other.derived_facts
+            and self.applied_rules == other.applied_rules
+        )
+
+    def __hash__(self):
+        # Convert lists to tuples for hashing
+        return hash((
+            tuple(self.initial_statements),
+            tuple(self.derived_facts),
+            tuple(self.applied_rules)
+        ))

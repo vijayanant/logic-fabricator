@@ -6,6 +6,7 @@ from logic_fabricator.fabric import (
     BeliefSystem,
     ContradictionRecord,
     SimulationResult,
+    SimulationRecord,
 )
 
 
@@ -263,3 +264,32 @@ def test_simulation_result_captures_applied_rules():
 
     assert rule1 in simulation_result.applied_rules
     assert rule2 not in simulation_result.applied_rules
+
+
+def test_belief_system_stores_simulation_record():
+    # This test asserts that the BeliefSystem stores a SimulationRecord
+    # after a simulation, capturing key details.
+    rule1 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a man"]),
+        consequence=Statement(verb="is", terms=["?x", "mortal"]),
+    )
+    rule2 = Rule(
+        condition=Condition(verb="is", terms=["?x", "mortal"]),
+        consequence=Statement(verb="needs", terms=["?x", "to eat"]),
+    )
+
+    belief_system = BeliefSystem(
+        rules=[rule1, rule2], contradiction_engine=ContradictionEngine()
+    )
+
+    initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
+    simulation_result = belief_system.simulate([initial_statement])
+
+    # Assert that a SimulationRecord was stored
+    assert len(belief_system.mcp_records) == 1
+    record = belief_system.mcp_records[0]
+
+    # Assert the content of the SimulationRecord
+    assert record.initial_statements == [initial_statement]
+    assert record.derived_facts == list(simulation_result.derived_facts)
+    assert record.applied_rules == list(simulation_result.applied_rules)
