@@ -13,9 +13,17 @@ class Statement:
         return hash((self.verb, tuple(self.terms), self.negated))
 
 class Condition:
-    def __init__(self, verb: str, terms: list[str]):
-        self.verb = verb
-        self.terms = terms
+    def __init__(self, verb: str = None, terms: list[str] = None, and_conditions: list['Condition'] = None):
+        if and_conditions is not None:
+            self.and_conditions = and_conditions
+            self.verb = None # Not applicable for conjunctive conditions
+            self.terms = None # Not applicable for conjunctive conditions
+        else:
+            if verb is None or terms is None:
+                raise ValueError("Verb and terms must be provided for a single condition.")
+            self.verb = verb
+            self.terms = terms
+        
 
     def matches(self, statement: Statement) -> dict | None:
         if self.verb != statement.verb:

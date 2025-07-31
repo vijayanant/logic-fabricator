@@ -168,3 +168,16 @@ def test_contradiction_detection_negation():
     engine = ContradictionEngine()
 
     assert engine.detect(statement1, statement2) is True
+
+
+def test_condition_stores_and_conditions():
+    # This test verifies that the Condition class can store a list of sub-conditions
+    # for conjunctive (AND) logic.
+    sub_condition1 = Condition(verb="is", terms=["?x", "a man"])
+    sub_condition2 = Condition(verb="is", terms=["?x", "wise"])
+
+    conjunctive_condition = Condition(and_conditions=[sub_condition1, sub_condition2])
+
+    assert conjunctive_condition.and_conditions == [sub_condition1, sub_condition2]
+    assert conjunctive_condition.verb is None
+    assert conjunctive_condition.terms is None
