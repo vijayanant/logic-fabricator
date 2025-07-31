@@ -2,9 +2,9 @@
 
 > *"Everything makes sense once you fabricate the rules."*
 
-Logic Fabricator is a playground for inventing and simulating custom logic systems — rules you write in natural language that get parsed, interpreted, and evaluated like a little alternate universe.
+Logic Fabricator is a playground for inventing and simulating custom logic systems — rules you define in natural language that are parsed, interpreted, and evaluated by a **deterministic logic engine**, like a little alternate universe.
 
-You define belief systems. You simulate statements. You contradict yourself... *on purpose*. All powered by LLMs and a memory control layer.
+You define belief systems. You simulate statements. You embrace contradictions... *on purpose*. All underpinned by a **symbolic reasoning core** and a memory control layer.
 
 ---
 
@@ -22,6 +22,7 @@ The core logic engine is now functional. It currently supports:
 -   **Contradiction Detection:** Identifying and handling direct contradictions between statements.
 -   **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
 -   **Traceability:** The results of a simulation include a record of which rules were applied to reach the conclusion.
+-   **Contradiction Forking:** When a contradiction is detected, the system can create a new, divergent belief system (a "fork") to explore alternative logical realities.
 
 ---
 
