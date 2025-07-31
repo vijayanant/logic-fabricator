@@ -50,6 +50,8 @@ Each fork is a full, independent logic world. It usually includes:
   - Who or what triggered it (user? engine?)
   - What changed
 
+Crucially, accepting a contradiction in a fork leads to **divergent inference paths** and subsequent different derived facts within that new logical reality.
+
 Example metadata:
 
 ```json
@@ -139,6 +141,8 @@ Forking turns your logic system into:
 - A **sandbox** for belief experimentation
 - A **versioned model of reasoning**
 - A **tool for narrative simulation**
+
+To fully leverage this, future development will include **fork management and navigation tools** for listing, comparing, and switching between different logical branches.
 
 You’re not solving for truth — you’re fabricating meaning.
 
