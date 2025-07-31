@@ -293,3 +293,40 @@ def test_belief_system_stores_simulation_record():
     assert record.initial_statements == [initial_statement]
     assert record.derived_facts == list(simulation_result.derived_facts)
     assert record.applied_rules == list(simulation_result.applied_rules)
+    assert record.forked_belief_system is None
+
+
+def test_belief_system_forks_on_contradiction():
+    # This test asserts that when a contradiction is detected during add_statement,
+    # the BeliefSystem creates a new, forked BeliefSystem instance.
+    statement1 = Statement(verb="is", terms=["Socrates", "alive"])
+    statement2 = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
+
+    engine = ContradictionEngine()
+    belief_system = BeliefSystem(rules=[], contradiction_engine=engine)
+
+    # Simulate adding the first statement
+    simulation_result_initial = belief_system.simulate([statement1])
+
+    # Now, introduce the contradictory statement. This should trigger a fork.
+    simulation_result_fork = belief_system.simulate([statement2])
+
+    # Assert that the original belief system does NOT contain the contradictory statement
+    assert statement2 not in belief_system.statements
+
+    # Assert that the forked belief system is returned in the SimulationResult
+    assert simulation_result_fork.forked_belief_system is not None
+    forked_belief_system = simulation_result_fork.forked_belief_system
+
+    # Assert that the forked belief system contains the contradictory statement
+    # and that it is a new instance.
+    assert isinstance(forked_belief_system, BeliefSystem)
+    assert forked_belief_system is not belief_system
+    assert statement2 in forked_belief_system.statements
+
+    # Assert that a SimulationRecord was stored for the fork
+    assert len(belief_system.mcp_records) == 2 # One for initial, one for fork
+    fork_record = belief_system.mcp_records[1]
+    assert fork_record.initial_statements == [statement2]
+    assert fork_record.forked_belief_system is not None
+    assert fork_record.forked_belief_system is forked_belief_system

@@ -171,6 +171,16 @@ class BeliefSystem:
         self.contradictions = []
         self.mcp_records = [] # Initialize MCP records
 
+    def fork(self, new_statement: Statement) -> 'BeliefSystem':
+        # Create a new BeliefSystem, copying the current state (rules and statements)
+        forked_system = BeliefSystem(rules=list(self.rules), contradiction_engine=self.contradiction_engine)
+        # Add all statements from the current system to the forked system
+        for s in self.statements:
+            forked_system.add_statement(s)
+        # Add the new statement that caused the fork directly to the forked system
+        forked_system.statements.add(new_statement)
+        return forked_system
+
     def add_statement(self, new_statement: Statement) -> bool:
         is_contradictory = False
         for existing_statement in self.statements:
@@ -186,54 +196,82 @@ class BeliefSystem:
 
         return not is_contradictory
 
-    def simulate(self, initial_statements: list["Statement"]):
-        # Clear statements for a fresh simulation run
-        self.statements = set()
-        for statement in initial_statements:
-            self.add_statement(statement)
+    def simulate(self, new_statements_to_process: list["Statement"]):
+        # This method processes new statements and potentially forks the system.
+        # It does NOT clear self.statements at the beginning, as it's meant to build upon existing state.
 
-        applied_rules = set()
-        while True:
-            newly_inferred_this_pass = set()
-            for rule in self.rules:
-                bindings = rule.applies_to(list(self.statements))
-                if bindings:
-                    inferred_statement = rule.generate_consequence(bindings)
-                    if inferred_statement not in self.statements:
-                        if self.add_statement(inferred_statement):
-                            newly_inferred_this_pass.add(inferred_statement)
-                            applied_rules.add(rule)
+        forked_belief_system = None
+        statements_added_in_this_run = set()
 
-            if not newly_inferred_this_pass:
+        for statement_to_add in new_statements_to_process:
+            # Check if adding this statement would cause a contradiction with the *current* state
+            if not self.add_statement(statement_to_add):
+                # Contradiction detected for an initial statement. Fork!
+                forked_belief_system = self.fork(statement_to_add)
+                # Stop processing further statements in this run if a fork occurs
                 break
+            else:
+                # Statement was successfully added (no contradiction with current state)
+                statements_added_in_this_run.add(statement_to_add)
 
-        derived_facts = list(self.statements - set(initial_statements))
+        # If a fork occurred, the simulation result will reflect that.
+        # Otherwise, proceed with inference.
+        if forked_belief_system:
+            derived_facts = [] # No new facts derived in this branch of simulation
+            applied_rules = [] # No rules applied in this branch of simulation
+        else:
+            applied_rules_set = set()
+            derived_facts_in_this_run = set() # Only facts derived *in this specific simulate call*
+
+            # Inference loop
+            while True:
+                newly_inferred_this_pass = set()
+                for rule in self.rules:
+                    bindings = rule.applies_to(list(self.statements))
+                    if bindings:
+                        inferred_statement = rule.generate_consequence(bindings)
+                        if inferred_statement not in self.statements:
+                            if self.add_statement(inferred_statement):
+                                newly_inferred_this_pass.add(inferred_statement)
+                                applied_rules_set.add(rule)
+
+                if not newly_inferred_this_pass:
+                    break
+                derived_facts_in_this_run.update(newly_inferred_this_pass)
+            
+            derived_facts = list(derived_facts_in_this_run)
+            applied_rules = list(applied_rules_set)
+
         simulation_result = SimulationResult(
             derived_facts=derived_facts,
-            applied_rules=list(applied_rules),
+            applied_rules=applied_rules,
+            forked_belief_system=forked_belief_system
         )
         
         # Store the simulation record in MCP
         self.mcp_records.append(SimulationRecord(
-            initial_statements=initial_statements,
+            initial_statements=new_statements_to_process, # These are the statements passed to this simulate call
             derived_facts=derived_facts,
-            applied_rules=list(applied_rules)
+            applied_rules=applied_rules,
+            forked_belief_system=forked_belief_system # Store the forked system in the record
         ))
 
         return simulation_result
 
 
 class SimulationResult:
-    def __init__(self, derived_facts: list[Statement], applied_rules: list[Rule]):
+    def __init__(self, derived_facts: list[Statement], applied_rules: list[Rule], forked_belief_system: 'BeliefSystem' = None):
         self.derived_facts = derived_facts
         self.applied_rules = applied_rules
+        self.forked_belief_system = forked_belief_system
 
 
 class SimulationRecord:
-    def __init__(self, initial_statements: list[Statement], derived_facts: list[Statement], applied_rules: list[Rule]):
+    def __init__(self, initial_statements: list[Statement], derived_facts: list[Statement], applied_rules: list[Rule], forked_belief_system: 'BeliefSystem' = None):
         self.initial_statements = initial_statements
         self.derived_facts = derived_facts
         self.applied_rules = applied_rules
+        self.forked_belief_system = forked_belief_system
 
     def __eq__(self, other):
         if not isinstance(other, SimulationRecord):
@@ -242,6 +280,7 @@ class SimulationRecord:
             self.initial_statements == other.initial_statements
             and self.derived_facts == other.derived_facts
             and self.applied_rules == other.applied_rules
+            and self.forked_belief_system == other.forked_belief_system
         )
 
     def __hash__(self):
@@ -249,5 +288,6 @@ class SimulationRecord:
         return hash((
             tuple(self.initial_statements),
             tuple(self.derived_facts),
-            tuple(self.applied_rules)
+            tuple(self.applied_rules),
+            self.forked_belief_system
         ))
