@@ -5,7 +5,7 @@ from logic_fabricator.fabric import (
     ContradictionEngine,
     BeliefSystem,
     ContradictionRecord,
-    SimulationResult
+    SimulationResult,
 )
 
 
@@ -94,7 +94,9 @@ def test_belief_system_infers_statement():
     rule_consequence = Statement(verb="is", terms=["?x", "mortal"])
     rule = Rule(condition=rule_condition, consequence=rule_consequence)
 
-    belief_system = BeliefSystem(rules=[rule], contradiction_engine=ContradictionEngine())
+    belief_system = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
     simulation_result = belief_system.simulate([initial_statement])
 
     # The system should process the statement and infer the consequence
@@ -196,15 +198,17 @@ def test_rule_with_conjunctive_condition_infers_statement():
     # If ?x is a man AND ?x is wise, then ?x is mortal
     condition_man = Condition(verb="is", terms=["?x", "a man"])
     condition_wise = Condition(verb="is", terms=["?x", "wise"])
-    
+
     # This is the new structure we're proposing for Condition
     conjunctive_condition = Condition(and_conditions=[condition_man, condition_wise])
-    
+
     consequence_template = Statement(verb="is", terms=["?x", "mortal"])
     rule = Rule(condition=conjunctive_condition, consequence=consequence_template)
 
-    belief_system = BeliefSystem(rules=[rule], contradiction_engine=ContradictionEngine())
-    
+    belief_system = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+
     # Simulate with both initial statements
     simulation_result = belief_system.simulate([statement1, statement2])
 
@@ -217,20 +221,45 @@ def test_simulation_engine_chains_inferences():
     # The consequence of one rule becomes the condition for another.
     rule1 = Rule(
         condition=Condition(verb="is", terms=["?x", "a man"]),
-        consequence=Statement(verb="is", terms=["?x", "mortal"])
+        consequence=Statement(verb="is", terms=["?x", "mortal"]),
     )
     rule2 = Rule(
         condition=Condition(verb="is", terms=["?x", "mortal"]),
-        consequence=Statement(verb="needs", terms=["?x", "to eat"])
+        consequence=Statement(verb="needs", terms=["?x", "to eat"]),
     )
 
-    belief_system = BeliefSystem(rules=[rule1, rule2], contradiction_engine=ContradictionEngine())
-    
+    belief_system = BeliefSystem(
+        rules=[rule1, rule2], contradiction_engine=ContradictionEngine()
+    )
+
     initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
-    
+
     # This is the new method we are proposing.
     # It should run the simulation to its logical conclusion.
     simulation_result = belief_system.simulate([initial_statement])
 
     final_statement = Statement(verb="needs", terms=["Socrates", "to eat"])
     assert final_statement in simulation_result.derived_facts
+
+
+def test_simulation_result_captures_applied_rules():
+    # This test asserts that the SimulationResult captures which rules were fired.
+    rule1 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a man"]),
+        consequence=Statement(verb="is", terms=["?x", "mortal"]),
+    )
+    # This rule will not be applied
+    rule2 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a god"]),
+        consequence=Statement(verb="is", terms=["?x", "immortal"]),
+    )
+
+    belief_system = BeliefSystem(
+        rules=[rule1, rule2], contradiction_engine=ContradictionEngine()
+    )
+
+    initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
+    simulation_result = belief_system.simulate([initial_statement])
+
+    assert rule1 in simulation_result.applied_rules
+    assert rule2 not in simulation_result.applied_rules
