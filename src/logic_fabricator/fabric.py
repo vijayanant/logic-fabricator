@@ -127,23 +127,43 @@ class ContradictionRecord:
 class BeliefSystem:
     def __init__(self, rules: list[Rule], contradiction_engine: ContradictionEngine):
         self.rules = rules
-        self.statements = []
+        self.statements = set()
         self.contradiction_engine = contradiction_engine
         self.contradictions = []
 
-    def add_statement(self, new_statement: Statement):
+    def add_statement(self, new_statement: Statement) -> bool:
         is_contradictory = False
         for existing_statement in self.statements:
             if self.contradiction_engine.detect(new_statement, existing_statement):
-                self.contradictions.append(ContradictionRecord(new_statement, existing_statement)) # Store the contradictory pair
+                self.contradictions.append(ContradictionRecord(new_statement, existing_statement))
                 is_contradictory = True
+                break
 
         if not is_contradictory:
-            self.statements.append(new_statement)
-            # Apply rules to infer new statements
+            self.statements.add(new_statement)
+        
+        return not is_contradictory
+
+    def simulate(self, initial_statements: list['Statement']):
+        for statement in initial_statements:
+            self.add_statement(statement)
+
+        while True:
+            newly_inferred_this_pass = set()
             for rule in self.rules:
-                bindings = rule.applies_to(self.statements) # Apply to all statements in the belief system
-                if bindings is not None:
+                bindings = rule.applies_to(list(self.statements))
+                if bindings:
                     inferred_statement = rule.generate_consequence(bindings)
-                    # For now, just add it. Contradiction detection will come later.
-                    self.statements.append(inferred_statement)
+                    if inferred_statement not in self.statements:
+                        if self.add_statement(inferred_statement):
+                            newly_inferred_this_pass.add(inferred_statement)
+
+            if not newly_inferred_this_pass:
+                break
+        
+        return SimulationResult(derived_facts=list(self.statements - set(initial_statements)))
+
+class SimulationResult:
+    def __init__(self, derived_facts: list[Statement]):
+        self.derived_facts = derived_facts
+
