@@ -14,8 +14,8 @@ class Statement:
 
 class Condition:
     def __init__(self, verb: str = None, terms: list[str] = None, and_conditions: list['Condition'] = None):
+        self.and_conditions = and_conditions # Initialize here
         if and_conditions is not None:
-            self.and_conditions = and_conditions
             self.verb = None # Not applicable for conjunctive conditions
             self.terms = None # Not applicable for conjunctive conditions
         else:
@@ -25,34 +25,72 @@ class Condition:
             self.terms = terms
         
 
-    def matches(self, statement: Statement) -> dict | None:
-        if self.verb != statement.verb:
-            return None
+    def matches(self, statements: list['Statement']) -> dict | None:
+        if self.and_conditions is not None:
+            # Handle conjunctive conditions
+            # This is a recursive function to find consistent bindings across all sub-conditions
+            def find_consistent_bindings(sub_conditions_to_match, available_statements, current_bindings):
+                if not sub_conditions_to_match:
+                    return current_bindings # All sub-conditions matched, return combined bindings
 
-        # Ensure the statement has at least as many terms as the condition
-        if len(statement.terms) < len(self.terms):
-            return None
+                sub_condition = sub_conditions_to_match[0]
+                remaining_sub_conditions = sub_conditions_to_match[1:]
 
-        bindings = {}
-        # Iterate only up to the length of the condition's terms
-        for i in range(len(self.terms)):
-            cond_term = self.terms[i]
-            stmt_term = statement.terms[i]
+                for i, stmt in enumerate(available_statements):
+                    sub_bindings = sub_condition.matches([stmt]) # Match sub-condition against a single statement
+                    if sub_bindings is not None:
+                        # Check for conflicting bindings
+                        new_bindings = current_bindings.copy()
+                        conflict = False
+                        for key, value in sub_bindings.items():
+                            if key in new_bindings and new_bindings[key] != value:
+                                conflict = True
+                                break
+                            new_bindings[key] = value
+                        
+                        if not conflict:
+                            # Remove the current statement from available_statements for recursive call
+                            next_available_statements = available_statements[:i] + available_statements[i+1:]
+                            # Recursively try to match remaining sub-conditions with updated bindings
+                            result = find_consistent_bindings(remaining_sub_conditions, next_available_statements, new_bindings)
+                            if result is not None:
+                                return result
+                return None # No consistent match found for this sub-condition
 
-            if cond_term.startswith('?'):  # It's a variable
-                bindings[cond_term] = stmt_term
-            elif cond_term != stmt_term:  # Mismatch for literal terms
-                return None
-        
-        return bindings
+            return find_consistent_bindings(self.and_conditions, statements, {})
+        else:
+            # Handle single condition
+            for statement in statements:
+                if self.verb != statement.verb:
+                    continue
+
+                # Ensure the statement has at least as many terms as the condition
+                if len(statement.terms) < len(self.terms):
+                    continue
+
+                bindings = {}
+                # Iterate only up to the length of the condition's terms
+                for i in range(len(self.terms)):
+                    cond_term = self.terms[i]
+                    stmt_term = statement.terms[i]
+
+                    if cond_term.startswith('?'):  # It's a variable
+                        bindings[cond_term] = stmt_term
+                    elif cond_term != stmt_term:  # Mismatch for literal terms
+                        bindings = None # Indicate no match for this statement
+                        break
+                
+                if bindings is not None: # If a match was found for this statement
+                    return bindings
+            return None # No match found for any statement
 
 class Rule:
     def __init__(self, condition: Condition, consequence: Statement):
         self.condition = condition
         self.consequence = consequence
 
-    def applies_to(self, statement: Statement) -> dict | None:
-        return self.condition.matches(statement)
+    def applies_to(self, statements: list['Statement']) -> dict | None:
+        return self.condition.matches(statements)
 
     def generate_consequence(self, bindings: dict) -> Statement:
         new_verb = self.consequence.verb
@@ -66,11 +104,8 @@ class Rule:
 
 class ContradictionEngine:
     def detect(self, s1: Statement, s2: Statement) -> bool:
-        # Simple contradiction: same verb, same first term (subject), different second term (object)
-        if s1.verb == s2.verb and s1.terms[0] == s2.terms[0] and s1.terms[1] != s2.terms[1]:
-            return True
-        
-        # Negation contradiction: same verb, same terms, but one is negated and the other is not
+        # Contradiction is defined as a statement and its direct negation.
+        # e.g., "Socrates is alive" and "Socrates is not alive"
         if s1.verb == s2.verb and s1.terms == s2.terms and s1.negated != s2.negated:
             return True
 
@@ -107,7 +142,7 @@ class BeliefSystem:
             self.statements.append(new_statement)
             # Apply rules to infer new statements
             for rule in self.rules:
-                bindings = rule.applies_to(new_statement) # Only apply to the new statement for now
+                bindings = rule.applies_to(self.statements) # Apply to all statements in the belief system
                 if bindings is not None:
                     inferred_statement = rule.generate_consequence(bindings)
                     # For now, just add it. Contradiction detection will come later.

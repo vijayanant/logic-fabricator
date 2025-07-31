@@ -26,7 +26,7 @@ def test_rule_applies_to_statement_by_verb():
         consequence=Statement(verb="", terms=[]),  # Placeholder consequence
     )  # Use Condition object with empty terms
 
-    assert rule.applies_to(statement) is not None
+    assert rule.applies_to([statement]) is not None
 
 
 def test_rule_applies_with_variable_binding():
@@ -36,12 +36,12 @@ def test_rule_applies_with_variable_binding():
     condition = Condition(verb="is", terms=["?x", "a man"])
     rule = Rule(condition=condition, consequence=Statement(verb="", terms=[]))
 
-    bindings = rule.applies_to(statement)
+    bindings = rule.applies_to([statement])
     assert bindings == {"?x": "Socrates"}
 
     # Test a non-matching case
     statement_no_match = Statement(verb="is", terms=["Plato", "a philosopher"])
-    bindings_no_match = rule.applies_to(statement_no_match)
+    bindings_no_match = rule.applies_to([statement_no_match])
     assert bindings_no_match is None
 
 
@@ -53,7 +53,7 @@ def test_rule_applies_with_fewer_condition_terms():
     condition = Condition(verb="is", terms=["?x", "a man"])
     rule = Rule(condition=condition, consequence=Statement(verb="", terms=[]))
 
-    bindings = rule.applies_to(statement)
+    bindings = rule.applies_to([statement])
     assert bindings == {"?x": "Socrates"}
 
 
@@ -65,7 +65,7 @@ def test_rule_generates_consequence_from_bindings():
     consequence_template = Statement(verb="is", terms=["?x", "mortal"])
     rule = Rule(condition=condition, consequence=consequence_template)
 
-    bindings = rule.applies_to(statement)
+    bindings = rule.applies_to([statement])
     assert bindings == {"?x": "Socrates"}
 
     generated_statement = rule.generate_consequence(bindings)
@@ -78,7 +78,7 @@ def test_contradiction_detection_simple():
     # This test proposes a simple contradiction detection mechanism.
     # It will fail because the ContradictionEngine and its logic do not yet exist.
     statement1 = Statement(verb="is", terms=["Socrates", "alive"])
-    statement2 = Statement(verb="is", terms=["Socrates", "dead"])
+    statement2 = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
 
     engine = ContradictionEngine()
 
@@ -105,7 +105,7 @@ def test_belief_system_detects_contradiction():
     # This test verifies that the BeliefSystem detects contradictions
     # when new statements are added.
     statement1 = Statement(verb="is", terms=["Socrates", "alive"])
-    statement2 = Statement(verb="is", terms=["Socrates", "dead"])
+    statement2 = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
 
     engine = ContradictionEngine()
     belief_system = BeliefSystem(rules=[], contradiction_engine=engine)
@@ -122,7 +122,7 @@ def test_belief_system_stores_contradiction_record():
     # This test verifies that the BeliefSystem stores a ContradictionRecord
     # when a contradiction is detected.
     statement1 = Statement(verb="is", terms=["Socrates", "alive"])
-    statement2 = Statement(verb="is", terms=["Socrates", "dead"])
+    statement2 = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
 
     engine = ContradictionEngine()
     belief_system = BeliefSystem(rules=[], contradiction_engine=engine)
@@ -141,7 +141,7 @@ def test_belief_system_prevents_contradictory_statement_addition():
     # This test verifies that a contradictory statement is NOT added
     # to the main statements list, but IS recorded as a contradiction.
     statement1 = Statement(verb="is", terms=["Socrates", "alive"])
-    statement2 = Statement(verb="is", terms=["Socrates", "dead"])
+    statement2 = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
 
     engine = ContradictionEngine()
     belief_system = BeliefSystem(rules=[], contradiction_engine=engine)
@@ -181,3 +181,32 @@ def test_condition_stores_and_conditions():
     assert conjunctive_condition.and_conditions == [sub_condition1, sub_condition2]
     assert conjunctive_condition.verb is None
     assert conjunctive_condition.terms is None
+
+
+def test_rule_with_conjunctive_condition_infers_statement():
+    # This test verifies that a Rule with multiple conditions (ANDed)
+    # can infer a new statement when all conditions are met.
+
+    # Initial statements in the belief system
+    statement1 = Statement(verb="is", terms=["Socrates", "a man"])
+    statement2 = Statement(verb="is", terms=["Socrates", "wise"])
+
+    # Rule with a conjunctive condition
+    # If ?x is a man AND ?x is wise, then ?x is mortal
+    condition_man = Condition(verb="is", terms=["?x", "a man"])
+    condition_wise = Condition(verb="is", terms=["?x", "wise"])
+    
+    # This is the new structure we're proposing for Condition
+    conjunctive_condition = Condition(and_conditions=[condition_man, condition_wise])
+    
+    consequence_template = Statement(verb="is", terms=["?x", "mortal"])
+    rule = Rule(condition=conjunctive_condition, consequence=consequence_template)
+
+    belief_system = BeliefSystem(rules=[rule], contradiction_engine=ContradictionEngine())
+    
+    # Add statements one by one to simulate processing
+    belief_system.add_statement(statement1)
+    belief_system.add_statement(statement2) # This addition should trigger the rule
+
+    inferred_statement = Statement(verb="is", terms=["Socrates", "mortal"])
+    assert inferred_statement in belief_system.statements
