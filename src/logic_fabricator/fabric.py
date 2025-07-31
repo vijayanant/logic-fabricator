@@ -69,6 +69,12 @@ class ContradictionEngine:
             and s1.terms[1] != s2.terms[1]
         ):
             return True
+        
+        # Negation contradiction: one is 'is' and other is 'is_not' with same terms
+        if (s1.verb == "is" and s2.verb == "is_not" and s1.terms == s2.terms) or \
+           (s2.verb == "is" and s1.verb == "is_not" and s2.terms == s1.terms):
+            return True
+        
         return False
 
 

@@ -4,7 +4,7 @@ from logic_fabricator.fabric import (
     Condition,
     ContradictionEngine,
     BeliefSystem,
-    ContradictionRecord,
+    ContradictionRecord
 )
 
 
@@ -93,9 +93,7 @@ def test_belief_system_infers_statement():
     rule_consequence = Statement(verb="is", terms=["?x", "mortal"])
     rule = Rule(condition=rule_condition, consequence=rule_consequence)
 
-    belief_system = BeliefSystem(
-        rules=[rule], contradiction_engine=ContradictionEngine()
-    )
+    belief_system = BeliefSystem(rules=[rule], contradiction_engine=ContradictionEngine())
     belief_system.add_statement(initial_statement)
 
     # The system should process the statement and infer the consequence
@@ -160,3 +158,13 @@ def test_belief_system_prevents_contradictory_statement_addition():
     assert contradiction_record.statement1 == statement2
     assert contradiction_record.statement2 == statement1
 
+
+def test_contradiction_detection_negation():
+    # This test verifies that the ContradictionEngine can detect contradictions
+    # involving negation.
+    statement1 = Statement(verb="is", terms=["Socrates", "alive"])
+    statement2 = Statement(verb="is_not", terms=["Socrates", "alive"])
+
+    engine = ContradictionEngine()
+
+    assert engine.detect(statement1, statement2) is True
