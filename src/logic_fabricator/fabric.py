@@ -1,16 +1,16 @@
 class Statement:
-    def __init__(self, verb: str, terms: list[str]):
+    def __init__(self, verb: str, terms: list[str], negated: bool = False):
         self.verb = verb
         self.terms = terms
+        self.negated = negated
 
     def __eq__(self, other):
         if not isinstance(other, Statement):
             return NotImplemented
-        return self.verb == other.verb and self.terms == other.terms
+        return self.verb == other.verb and self.terms == other.terms and self.negated == other.negated
 
     def __hash__(self):
-        return hash((self.verb, tuple(self.terms)))
-
+        return hash((self.verb, tuple(self.terms), self.negated))
 
 class Condition:
     def __init__(self, verb: str, terms: list[str]):
@@ -31,13 +31,12 @@ class Condition:
             cond_term = self.terms[i]
             stmt_term = statement.terms[i]
 
-            if cond_term.startswith("?"):  # It's a variable
+            if cond_term.startswith('?'):  # It's a variable
                 bindings[cond_term] = stmt_term
             elif cond_term != stmt_term:  # Mismatch for literal terms
                 return None
-
+        
         return bindings
-
 
 class Rule:
     def __init__(self, condition: Condition, consequence: Statement):
@@ -51,32 +50,23 @@ class Rule:
         new_verb = self.consequence.verb
         new_terms = []
         for term in self.consequence.terms:
-            if term.startswith("?"):
-                new_terms.append(
-                    bindings.get(term, term)
-                )  # Use bound value, or original term if not found
+            if term.startswith('?'):
+                new_terms.append(bindings.get(term, term)) # Use bound value, or original term if not found
             else:
                 new_terms.append(term)
         return Statement(verb=new_verb, terms=new_terms)
 
-
 class ContradictionEngine:
     def detect(self, s1: Statement, s2: Statement) -> bool:
         # Simple contradiction: same verb, same first term (subject), different second term (object)
-        if (
-            s1.verb == s2.verb
-            and s1.terms[0] == s2.terms[0]
-            and s1.terms[1] != s2.terms[1]
-        ):
+        if s1.verb == s2.verb and s1.terms[0] == s2.terms[0] and s1.terms[1] != s2.terms[1]:
             return True
         
-        # Negation contradiction: one is 'is' and other is 'is_not' with same terms
-        if (s1.verb == "is" and s2.verb == "is_not" and s1.terms == s2.terms) or \
-           (s2.verb == "is" and s1.verb == "is_not" and s2.terms == s1.terms):
+        # Negation contradiction: same verb, same terms, but one is negated and the other is not
+        if s1.verb == s2.verb and s1.terms == s2.terms and s1.negated != s2.negated:
             return True
-        
-        return False
 
+        return False
 
 class ContradictionRecord:
     def __init__(self, statement1: Statement, statement2: Statement):
@@ -86,13 +76,10 @@ class ContradictionRecord:
     def __eq__(self, other):
         if not isinstance(other, ContradictionRecord):
             return NotImplemented
-        return (
-            self.statement1 == other.statement1 and self.statement2 == other.statement2
-        )
+        return self.statement1 == other.statement1 and self.statement2 == other.statement2
 
     def __hash__(self):
         return hash((self.statement1, self.statement2))
-
 
 class BeliefSystem:
     def __init__(self, rules: list[Rule], contradiction_engine: ContradictionEngine):
@@ -105,18 +92,15 @@ class BeliefSystem:
         is_contradictory = False
         for existing_statement in self.statements:
             if self.contradiction_engine.detect(new_statement, existing_statement):
-                self.contradictions.append(
-                    ContradictionRecord(new_statement, existing_statement)
-                )  # Store the contradictory pair
+                self.contradictions.append(ContradictionRecord(new_statement, existing_statement)) # Store the contradictory pair
                 is_contradictory = True
 
         if not is_contradictory:
             self.statements.append(new_statement)
             # Apply rules to infer new statements
             for rule in self.rules:
-                bindings = rule.applies_to(new_statement)
+                bindings = rule.applies_to(new_statement) # Only apply to the new statement for now
                 if bindings is not None:
                     inferred_statement = rule.generate_consequence(bindings)
                     # For now, just add it. Contradiction detection will come later.
                     self.statements.append(inferred_statement)
-

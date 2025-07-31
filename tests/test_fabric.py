@@ -163,7 +163,7 @@ def test_contradiction_detection_negation():
     # This test verifies that the ContradictionEngine can detect contradictions
     # involving negation.
     statement1 = Statement(verb="is", terms=["Socrates", "alive"])
-    statement2 = Statement(verb="is_not", terms=["Socrates", "alive"])
+    statement2 = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
 
     engine = ContradictionEngine()
 
