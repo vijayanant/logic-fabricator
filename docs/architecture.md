@@ -25,6 +25,7 @@ All while keeping it fun, transparent, and user-driven.
 
 - User-facing input: natural language.
 - Parsed into structured object: verb modifiers, entities, qualifiers.
+- **Architectural Constraint**: A Rule's consequence is always a `Statement`. A Rule cannot generate another Rule. This is a deliberate design choice to ensure the logic of a belief system is stable and traceable. It prevents self-modifying logic, which would complicate our goal of creating an understandable and auditable reasoning engine.
 - Current status: primitive object holding a text and a basic verb identifier.
 - Goal: grow into a modular, evaluatable logic unit with type annotations.
 
