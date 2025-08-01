@@ -330,3 +330,35 @@ def test_belief_system_forks_on_contradiction():
     assert fork_record.initial_statements == [statement2]
     assert fork_record.forked_belief_system is not None
     assert fork_record.forked_belief_system is forked_belief_system
+
+def test_forked_system_is_independently_simulatable():
+    # This test asserts that a forked BeliefSystem is a fully independent entity
+    # that can be simulated on its own.
+    rule = Rule(
+        condition=Condition(verb="is", terms=["?x", "a god"]),
+        consequence=Statement(verb="is", terms=["?x", "immortal"])
+    )
+    belief_system = BeliefSystem(rules=[rule], contradiction_engine=ContradictionEngine())
+
+    # 1. Add a statement to the parent system.
+    original_statement = Statement(verb="is", terms=["Socrates", "alive"])
+    belief_system.simulate([original_statement])
+
+    # 2. Create a fork by introducing a contradiction.
+    contradictory_statement = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
+    sim_result_fork = belief_system.simulate([contradictory_statement])
+    forked_system = sim_result_fork.forked_belief_system
+    assert forked_system is not None
+
+    # 3. Now, run a *new* simulation on the forked system.
+    new_statement_for_fork = Statement(verb="is", terms=["Zeus", "a god"])
+    fork_sim_result = forked_system.simulate([new_statement_for_fork])
+
+    # 4. Assert that the forked system evolved, but the original did not.
+    expected_derived_fact = Statement(verb="is", terms=["Zeus", "immortal"])
+    assert expected_derived_fact in fork_sim_result.derived_facts
+    assert expected_derived_fact in forked_system.statements
+    assert expected_derived_fact not in belief_system.statements
+
+    # 5. Verify the original system's state is unchanged by the fork's simulation.
+    assert new_statement_for_fork not in belief_system.statements
