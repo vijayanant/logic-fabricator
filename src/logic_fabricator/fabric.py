@@ -36,72 +36,84 @@ class Condition:
             self.verb = verb
             self.terms = terms
 
+    def __eq__(self, other):
+        if not isinstance(other, Condition):
+            return NotImplemented
+        return (
+            self.verb == other.verb
+            and self.terms == other.terms
+            and self.and_conditions == other.and_conditions
+        )
+
+    def __hash__(self):
+        # Note: and_conditions should be a tuple of conditions for hashing
+        and_conditions_tuple = None
+        if self.and_conditions is not None:
+            and_conditions_tuple = tuple(sorted(self.and_conditions, key=lambda c: hash(c)))
+
+        return hash((self.verb, tuple(self.terms) if self.terms else None, and_conditions_tuple))
+
+    def _match_single_condition(self, statement: "Statement") -> dict | None:
+        if self.verb != statement.verb:
+            return None
+
+        if len(statement.terms) < len(self.terms):
+            return None
+
+        bindings = {}
+        for i in range(len(self.terms)):
+            cond_term = self.terms[i]
+            stmt_term = statement.terms[i]
+
+            if cond_term.startswith("?"):  # It's a variable
+                bindings[cond_term] = stmt_term
+            elif cond_term != stmt_term:  # Mismatch for literal terms
+                return None
+        return bindings
+
+    def _find_consistent_bindings(
+        self,
+        sub_conditions_to_match: list["Condition"],
+        available_statements: list["Statement"],
+        current_bindings: dict,
+    ) -> dict | None:
+        if not sub_conditions_to_match:
+            return current_bindings  # All sub-conditions matched, return combined bindings
+
+        sub_condition = sub_conditions_to_match[0]
+        remaining_sub_conditions = sub_conditions_to_match[1:]
+
+        for i, stmt in enumerate(available_statements):
+            sub_bindings = sub_condition._match_single_condition(stmt)  # Use the new helper
+            if sub_bindings is not None:
+                new_bindings = current_bindings.copy()
+                conflict = False
+                for key, value in sub_bindings.items():
+                    if key in new_bindings and new_bindings[key] != value:
+                        conflict = True
+                        break
+                    new_bindings[key] = value
+
+                if not conflict:
+                    next_available_statements = (
+                        available_statements[:i] + available_statements[i + 1 :]
+                    )
+                    result = self._find_consistent_bindings(
+                        remaining_sub_conditions,
+                        next_available_statements,
+                        new_bindings,
+                    )
+                    if result is not None:
+                        return result
+        return None
+
     def matches(self, statements: list["Statement"]) -> dict | None:
         if self.and_conditions is not None:
-            # Handle conjunctive conditions
-            # This is a recursive function to find consistent bindings across all sub-conditions
-            def find_consistent_bindings(
-                sub_conditions_to_match, available_statements, current_bindings
-            ):
-                if not sub_conditions_to_match:
-                    return current_bindings  # All sub-conditions matched, return combined bindings
-
-                sub_condition = sub_conditions_to_match[0]
-                remaining_sub_conditions = sub_conditions_to_match[1:]
-
-                for i, stmt in enumerate(available_statements):
-                    sub_bindings = sub_condition.matches(
-                        [stmt]
-                    )  # Match sub-condition against a single statement
-                    if sub_bindings is not None:
-                        # Check for conflicting bindings
-                        new_bindings = current_bindings.copy()
-                        conflict = False
-                        for key, value in sub_bindings.items():
-                            if key in new_bindings and new_bindings[key] != value:
-                                conflict = True
-                                break
-                            new_bindings[key] = value
-
-                        if not conflict:
-                            # Remove the current statement from available_statements for recursive call
-                            next_available_statements = (
-                                available_statements[:i] + available_statements[i + 1 :]
-                            )
-                            # Recursively try to match remaining sub-conditions with updated bindings
-                            result = find_consistent_bindings(
-                                remaining_sub_conditions,
-                                next_available_statements,
-                                new_bindings,
-                            )
-                            if result is not None:
-                                return result
-                return None  # No consistent match found for this sub-condition
-
-            return find_consistent_bindings(self.and_conditions, statements, {})
+            return self._find_consistent_bindings(self.and_conditions, statements, {})
         else:
-            # Handle single condition
             for statement in statements:
-                if self.verb != statement.verb:
-                    continue
-
-                # Ensure the statement has at least as many terms as the condition
-                if len(statement.terms) < len(self.terms):
-                    continue
-
-                bindings = {}
-                # Iterate only up to the length of the condition's terms
-                for i in range(len(self.terms)):
-                    cond_term = self.terms[i]
-                    stmt_term = statement.terms[i]
-
-                    if cond_term.startswith("?"):  # It's a variable
-                        bindings[cond_term] = stmt_term
-                    elif cond_term != stmt_term:  # Mismatch for literal terms
-                        bindings = None  # Indicate no match for this statement
-                        break
-
-                if bindings is not None:  # If a match was found for this statement
+                bindings = self._match_single_condition(statement)
+                if bindings is not None:
                     return bindings
             return None  # No match found for any statement
 
@@ -196,51 +208,43 @@ class BeliefSystem:
 
         return not is_contradictory
 
-    def simulate(self, new_statements_to_process: list["Statement"]):
-        # This method processes new statements and potentially forks the system.
-        # It does NOT clear self.statements at the beginning, as it's meant to build upon existing state.
-
+    def _process_initial_statements(self, new_statements_to_process: list["Statement"]):
         forked_belief_system = None
-        statements_added_in_this_run = set()
-
         for statement_to_add in new_statements_to_process:
-            # Check if adding this statement would cause a contradiction with the *current* state
             if not self.add_statement(statement_to_add):
-                # Contradiction detected for an initial statement. Fork!
                 forked_belief_system = self.fork(statement_to_add)
-                # Stop processing further statements in this run if a fork occurs
                 break
-            else:
-                # Statement was successfully added (no contradiction with current state)
-                statements_added_in_this_run.add(statement_to_add)
+        return forked_belief_system
 
-        # If a fork occurred, the simulation result will reflect that.
-        # Otherwise, proceed with inference.
+    def _perform_inference(self):
+        applied_rules_set = set()
+        derived_facts_in_this_run = set()
+
+        while True:
+            newly_inferred_this_pass = set()
+            for rule in self.rules:
+                bindings = rule.applies_to(list(self.statements))
+                if bindings:
+                    inferred_statement = rule.generate_consequence(bindings)
+                    if inferred_statement not in self.statements:
+                        if self.add_statement(inferred_statement):
+                            newly_inferred_this_pass.add(inferred_statement)
+                            applied_rules_set.add(rule)
+
+            if not newly_inferred_this_pass:
+                break
+            derived_facts_in_this_run.update(newly_inferred_this_pass)
+        
+        return list(derived_facts_in_this_run), list(applied_rules_set)
+
+    def simulate(self, new_statements_to_process: list["Statement"]):
+        forked_belief_system = self._process_initial_statements(new_statements_to_process)
+
         if forked_belief_system:
-            derived_facts = [] # No new facts derived in this branch of simulation
-            applied_rules = [] # No rules applied in this branch of simulation
+            derived_facts = []
+            applied_rules = []
         else:
-            applied_rules_set = set()
-            derived_facts_in_this_run = set() # Only facts derived *in this specific simulate call*
-
-            # Inference loop
-            while True:
-                newly_inferred_this_pass = set()
-                for rule in self.rules:
-                    bindings = rule.applies_to(list(self.statements))
-                    if bindings:
-                        inferred_statement = rule.generate_consequence(bindings)
-                        if inferred_statement not in self.statements:
-                            if self.add_statement(inferred_statement):
-                                newly_inferred_this_pass.add(inferred_statement)
-                                applied_rules_set.add(rule)
-
-                if not newly_inferred_this_pass:
-                    break
-                derived_facts_in_this_run.update(newly_inferred_this_pass)
-            
-            derived_facts = list(derived_facts_in_this_run)
-            applied_rules = list(applied_rules_set)
+            derived_facts, applied_rules = self._perform_inference()
 
         simulation_result = SimulationResult(
             derived_facts=derived_facts,
@@ -248,12 +252,11 @@ class BeliefSystem:
             forked_belief_system=forked_belief_system
         )
         
-        # Store the simulation record in MCP
         self.mcp_records.append(SimulationRecord(
-            initial_statements=new_statements_to_process, # These are the statements passed to this simulate call
+            initial_statements=new_statements_to_process,
             derived_facts=derived_facts,
             applied_rules=applied_rules,
-            forked_belief_system=forked_belief_system # Store the forked system in the record
+            forked_belief_system=forked_belief_system
         ))
 
         return simulation_result
