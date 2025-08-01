@@ -49,9 +49,13 @@ class Condition:
         # Note: and_conditions should be a tuple of conditions for hashing
         and_conditions_tuple = None
         if self.and_conditions is not None:
-            and_conditions_tuple = tuple(sorted(self.and_conditions, key=lambda c: hash(c)))
+            and_conditions_tuple = tuple(
+                sorted(self.and_conditions, key=lambda c: hash(c))
+            )
 
-        return hash((self.verb, tuple(self.terms) if self.terms else None, and_conditions_tuple))
+        return hash(
+            (self.verb, tuple(self.terms) if self.terms else None, and_conditions_tuple)
+        )
 
     def _match_single_condition(self, statement: "Statement") -> dict | None:
         if self.verb != statement.verb:
@@ -78,13 +82,17 @@ class Condition:
         current_bindings: dict,
     ) -> dict | None:
         if not sub_conditions_to_match:
-            return current_bindings  # All sub-conditions matched, return combined bindings
+            return (
+                current_bindings  # All sub-conditions matched, return combined bindings
+            )
 
         sub_condition = sub_conditions_to_match[0]
         remaining_sub_conditions = sub_conditions_to_match[1:]
 
         for i, stmt in enumerate(available_statements):
-            sub_bindings = sub_condition._match_single_condition(stmt)  # Use the new helper
+            sub_bindings = sub_condition._match_single_condition(
+                stmt
+            )  # Use the new helper
             if sub_bindings is not None:
                 new_bindings = current_bindings.copy()
                 conflict = False
@@ -181,11 +189,13 @@ class BeliefSystem:
         self.statements = set()
         self.contradiction_engine = contradiction_engine
         self.contradictions = []
-        self.mcp_records = [] # Initialize MCP records
+        self.mcp_records = []  # Initialize MCP records
 
-    def fork(self, new_statement: Statement) -> 'BeliefSystem':
+    def fork(self, new_statement: Statement) -> "BeliefSystem":
         # Create a new BeliefSystem, copying the current state (rules and statements)
-        forked_system = BeliefSystem(rules=list(self.rules), contradiction_engine=self.contradiction_engine)
+        forked_system = BeliefSystem(
+            rules=list(self.rules), contradiction_engine=self.contradiction_engine
+        )
         # Add all statements from the current system to the forked system
         for s in self.statements:
             forked_system.add_statement(s)
@@ -234,11 +244,13 @@ class BeliefSystem:
             if not newly_inferred_this_pass:
                 break
             derived_facts_in_this_run.update(newly_inferred_this_pass)
-        
+
         return list(derived_facts_in_this_run), list(applied_rules_set)
 
     def simulate(self, new_statements_to_process: list["Statement"]):
-        forked_belief_system = self._process_initial_statements(new_statements_to_process)
+        forked_belief_system = self._process_initial_statements(
+            new_statements_to_process
+        )
 
         if forked_belief_system:
             derived_facts = []
@@ -249,28 +261,41 @@ class BeliefSystem:
         simulation_result = SimulationResult(
             derived_facts=derived_facts,
             applied_rules=applied_rules,
-            forked_belief_system=forked_belief_system
+            forked_belief_system=forked_belief_system,
         )
-        
-        self.mcp_records.append(SimulationRecord(
-            initial_statements=new_statements_to_process,
-            derived_facts=derived_facts,
-            applied_rules=applied_rules,
-            forked_belief_system=forked_belief_system
-        ))
+
+        self.mcp_records.append(
+            SimulationRecord(
+                initial_statements=new_statements_to_process,
+                derived_facts=derived_facts,
+                applied_rules=applied_rules,
+                forked_belief_system=forked_belief_system,
+            )
+        )
 
         return simulation_result
 
 
 class SimulationResult:
-    def __init__(self, derived_facts: list[Statement], applied_rules: list[Rule], forked_belief_system: 'BeliefSystem' = None):
+    def __init__(
+        self,
+        derived_facts: list[Statement],
+        applied_rules: list[Rule],
+        forked_belief_system: "BeliefSystem" = None,
+    ):
         self.derived_facts = derived_facts
         self.applied_rules = applied_rules
         self.forked_belief_system = forked_belief_system
 
 
 class SimulationRecord:
-    def __init__(self, initial_statements: list[Statement], derived_facts: list[Statement], applied_rules: list[Rule], forked_belief_system: 'BeliefSystem' = None):
+    def __init__(
+        self,
+        initial_statements: list[Statement],
+        derived_facts: list[Statement],
+        applied_rules: list[Rule],
+        forked_belief_system: "BeliefSystem" = None,
+    ):
         self.initial_statements = initial_statements
         self.derived_facts = derived_facts
         self.applied_rules = applied_rules
@@ -288,9 +313,11 @@ class SimulationRecord:
 
     def __hash__(self):
         # Convert lists to tuples for hashing
-        return hash((
-            tuple(self.initial_statements),
-            tuple(self.derived_facts),
-            tuple(self.applied_rules),
-            self.forked_belief_system
-        ))
+        return hash(
+            (
+                tuple(self.initial_statements),
+                tuple(self.derived_facts),
+                tuple(self.applied_rules),
+                self.forked_belief_system,
+            )
+        )

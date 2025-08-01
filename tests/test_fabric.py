@@ -325,27 +325,32 @@ def test_belief_system_forks_on_contradiction():
     assert statement2 in forked_belief_system.statements
 
     # Assert that a SimulationRecord was stored for the fork
-    assert len(belief_system.mcp_records) == 2 # One for initial, one for fork
+    assert len(belief_system.mcp_records) == 2  # One for initial, one for fork
     fork_record = belief_system.mcp_records[1]
     assert fork_record.initial_statements == [statement2]
     assert fork_record.forked_belief_system is not None
     assert fork_record.forked_belief_system is forked_belief_system
+
 
 def test_forked_system_is_independently_simulatable():
     # This test asserts that a forked BeliefSystem is a fully independent entity
     # that can be simulated on its own.
     rule = Rule(
         condition=Condition(verb="is", terms=["?x", "a god"]),
-        consequence=Statement(verb="is", terms=["?x", "immortal"])
+        consequence=Statement(verb="is", terms=["?x", "immortal"]),
     )
-    belief_system = BeliefSystem(rules=[rule], contradiction_engine=ContradictionEngine())
+    belief_system = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
 
     # 1. Add a statement to the parent system.
     original_statement = Statement(verb="is", terms=["Socrates", "alive"])
     belief_system.simulate([original_statement])
 
     # 2. Create a fork by introducing a contradiction.
-    contradictory_statement = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
+    contradictory_statement = Statement(
+        verb="is", terms=["Socrates", "alive"], negated=True
+    )
     sim_result_fork = belief_system.simulate([contradictory_statement])
     forked_system = sim_result_fork.forked_belief_system
     assert forked_system is not None
@@ -362,3 +367,30 @@ def test_forked_system_is_independently_simulatable():
 
     # 5. Verify the original system's state is unchanged by the fork's simulation.
     assert new_statement_for_fork not in belief_system.statements
+
+
+def test_fork_coexistence_principle():
+    # This test codifies the "Coexistence Principle" from our documentation.
+    # A fork must contain both the original statement and the new one that contradicts it.
+    original_statement = Statement(verb="is", terms=["Socrates", "alive"])
+    contradictory_statement = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
+
+    belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
+
+    # 1. Add the original statement.
+    belief_system.simulate([original_statement])
+    assert original_statement in belief_system.statements
+
+    # 2. Introduce the contradiction, which should cause a fork.
+    sim_result = belief_system.simulate([contradictory_statement])
+
+    # 3. Get the forked system.
+    assert sim_result.forked_belief_system is not None
+    forked_system = sim_result.forked_belief_system
+
+    # 4. Assert that the forked system contains BOTH statements.
+    assert original_statement in forked_system.statements
+    assert contradictory_statement in forked_system.statements
+
+    # 5. Assert the original system was NOT changed.
+    assert contradictory_statement not in belief_system.statements
