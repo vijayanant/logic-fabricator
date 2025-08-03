@@ -394,3 +394,37 @@ def test_fork_coexistence_principle():
 
     # 5. Assert the original system was NOT changed.
     assert contradictory_statement not in belief_system.statements
+
+
+def test_simulation_propagates_to_forks():
+    """
+    Tests that simulating the parent BeliefSystem also simulates its forks.
+    This is a core principle of the "Fork Evolution and Simulation" design.
+    """
+    # 1. Create a parent system
+    parent_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
+
+    # 2. Create a fork by introducing a contradiction
+    original_statement = Statement(verb="is", terms=["sky", "blue"])
+    contradictory_statement = Statement(
+        verb="is", terms=["sky", "blue"], negated=True
+    )
+    parent_system.simulate([original_statement])
+    sim_result_fork = parent_system.simulate([contradictory_statement])
+    forked_system = sim_result_fork.forked_belief_system
+    assert forked_system is not None
+
+    # 3. Add a unique rule to the FORKED system
+    fork_only_rule = Rule(
+        condition=Condition(verb="is", terms=["?x", "bright"]),
+        consequence=Statement(verb="emits", terms=["?x", "light"]),
+    )
+    forked_system.rules.append(fork_only_rule)
+
+    # 4. Simulate a NEW statement on the PARENT system
+    new_statement = Statement(verb="is", terms=["sun", "bright"])
+    parent_system.simulate([new_statement])
+
+    # 5. Assert that the fork ALSO simulated the new statement and applied its unique rule
+    expected_derived_fact = Statement(verb="emits", terms=["sun", "light"])
+    assert expected_derived_fact in forked_system.statements

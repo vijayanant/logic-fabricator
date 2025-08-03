@@ -190,6 +190,7 @@ class BeliefSystem:
         self.contradiction_engine = contradiction_engine
         self.contradictions = []
         self.mcp_records = []  # Initialize MCP records
+        self.forks = []
 
     def fork(self, new_statement: Statement) -> "BeliefSystem":
         # Create a new BeliefSystem, copying the current state (rules and statements)
@@ -201,6 +202,7 @@ class BeliefSystem:
             forked_system.add_statement(s)
         # Add the new statement that caused the fork directly to the forked system
         forked_system.statements.add(new_statement)
+        self.forks.append(forked_system)
         return forked_system
 
     def add_statement(self, new_statement: Statement) -> bool:
@@ -248,6 +250,10 @@ class BeliefSystem:
         return list(derived_facts_in_this_run), list(applied_rules_set)
 
     def simulate(self, new_statements_to_process: list["Statement"]):
+        # Propagate simulation to all existing forks first
+        for fork in self.forks:
+            fork.simulate(new_statements_to_process)
+
         forked_belief_system = self._process_initial_statements(
             new_statements_to_process
         )
