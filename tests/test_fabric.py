@@ -373,7 +373,9 @@ def test_fork_coexistence_principle():
     # This test codifies the "Coexistence Principle" from our documentation.
     # A fork must contain both the original statement and the new one that contradicts it.
     original_statement = Statement(verb="is", terms=["Socrates", "alive"])
-    contradictory_statement = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
+    contradictory_statement = Statement(
+        verb="is", terms=["Socrates", "alive"], negated=True
+    )
 
     belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
 
@@ -406,9 +408,7 @@ def test_simulation_propagates_to_forks():
 
     # 2. Create a fork by introducing a contradiction
     original_statement = Statement(verb="is", terms=["sky", "blue"])
-    contradictory_statement = Statement(
-        verb="is", terms=["sky", "blue"], negated=True
-    )
+    contradictory_statement = Statement(verb="is", terms=["sky", "blue"], negated=True)
     parent_system.simulate([original_statement])
     sim_result_fork = parent_system.simulate([contradictory_statement])
     forked_system = sim_result_fork.forked_belief_system
@@ -428,3 +428,32 @@ def test_simulation_propagates_to_forks():
     # 5. Assert that the fork ALSO simulated the new statement and applied its unique rule
     expected_derived_fact = Statement(verb="emits", terms=["sun", "light"])
     assert expected_derived_fact in forked_system.statements
+
+
+def test_fork_has_independent_and_empty_initial_mcp():
+    """
+    Tests that a forked BeliefSystem starts with its own empty MCP history,
+    independent of the parent's history.
+    """
+    # 1. Create a parent system and give it a history
+    parent_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
+    parent_system.simulate([Statement(verb="is", terms=["earth", "round"])])
+    assert len(parent_system.mcp_records) == 1
+
+    # 2. Create a fork
+    contradictory_statement = Statement(
+        verb="is", terms=["earth", "round"], negated=True
+    )
+    sim_result_fork = parent_system.simulate([contradictory_statement])
+    forked_system = sim_result_fork.forked_belief_system
+    assert forked_system is not None
+
+    # 3. Assert the fork's MCP is empty to start
+    assert len(forked_system.mcp_records) == 0
+
+    # 4. Simulate on the fork and assert it creates its own history
+    forked_system.simulate([Statement(verb="is", terms=["mars", "red"])])
+    assert len(forked_system.mcp_records) == 1
+
+    # 5. Assert the parent's history remains unchanged
+    assert len(parent_system.mcp_records) == 2 # Initial sim + the fork event
