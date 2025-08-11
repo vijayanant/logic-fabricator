@@ -38,8 +38,10 @@ class Condition:
         verb: str = None,
         terms: list[str] = None,
         and_conditions: list["Condition"] = None,
+        verb_synonyms: list[str] = None,
     ):
         self.and_conditions = and_conditions  # Initialize here
+        self.verb_synonyms = verb_synonyms or []
         if and_conditions is not None:
             self.verb = None  # Not applicable for conjunctive conditions
             self.terms = None  # Not applicable for conjunctive conditions
@@ -58,6 +60,7 @@ class Condition:
             self.verb == other.verb
             and self.terms == other.terms
             and self.and_conditions == other.and_conditions
+            and self.verb_synonyms == other.verb_synonyms
         )
 
     def __hash__(self):
@@ -69,11 +72,19 @@ class Condition:
             )
 
         return hash(
-            (self.verb, tuple(self.terms) if self.terms else None, and_conditions_tuple)
+            (
+                self.verb,
+                tuple(self.terms) if self.terms else None,
+                and_conditions_tuple,
+                tuple(self.verb_synonyms),
+            )
         )
 
     def _match_single_condition(self, statement: "Statement") -> dict | None:
-        if self.verb != statement.verb:
+        verb_matches = (
+            self.verb == statement.verb or statement.verb in self.verb_synonyms
+        )
+        if not verb_matches:
             return None
 
         if len(statement.terms) < len(self.terms):

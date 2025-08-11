@@ -32,6 +32,22 @@ def test_rule_applies_to_statement_by_verb():
     assert rule.applies_to([statement]) is not None
 
 
+def test_rule_applies_to_statement_with_synonym():
+    """Tests that a rule can apply to a statement if the statement's verb
+    is in the condition's list of synonyms.
+    """
+    statement = Statement(verb="relies on", terms=["Alice", "Bob"])
+    condition = Condition(
+        verb="trusts",
+        terms=["?x", "?y"],
+        verb_synonyms=["relies on", "has faith in"],
+    )
+    rule = Rule(condition=condition, consequence=Statement(verb="", terms=[]))
+
+    bindings = rule.applies_to([statement])
+    assert bindings == {"?x": "Alice", "?y": "Bob"}
+
+
 def test_rule_applies_with_variable_binding():
     # This test proposes that Rule.applies_to should return bindings
     # when a variable in the condition matches a term in the statement.
