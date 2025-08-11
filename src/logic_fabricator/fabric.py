@@ -1,3 +1,12 @@
+import enum
+from typing import Optional
+
+
+class ForkingStrategy(enum.Enum):
+    COEXIST = "coexist"
+    PRESERVE = "preserve"
+
+
 class Statement:
     def __init__(self, verb: str, terms: list[str], negated: bool = False):
         self.verb = verb
@@ -187,22 +196,27 @@ class InferredContradiction(Exception):
         self.statement = statement
 
 class BeliefSystem:
-    def __init__(self, rules: list[Rule], contradiction_engine: ContradictionEngine):
+    def __init__(
+        self,
+        rules: list[Rule],
+        contradiction_engine: ContradictionEngine,
+        strategy: ForkingStrategy = ForkingStrategy.COEXIST,
+    ):
         self.rules = rules
-        self.statements = set()
         self.contradiction_engine = contradiction_engine
+        self.strategy = strategy
+        self.statements = set()
         self.contradictions = []
-        self.mcp_records = []  # Initialize MCP records
+        self.mcp_records = []
         self.forks = []
 
     def fork(self, new_statement: Statement) -> "BeliefSystem":
-        # Create a new BeliefSystem, copying the current state (rules and statements)
         forked_system = BeliefSystem(
-            rules=list(self.rules), contradiction_engine=self.contradiction_engine
+            rules=list(self.rules),
+            contradiction_engine=self.contradiction_engine,
+            strategy=self.strategy,  # Forks inherit the parent's strategy
         )
-        # Directly copy the statements, bypassing the contradiction check for existing truths
         forked_system.statements = self.statements.copy()
-        # Add the new statement that caused the fork directly to the forked system
         forked_system.statements.add(new_statement)
         self.forks.append(forked_system)
         return forked_system
@@ -216,24 +230,30 @@ class BeliefSystem:
                 )
                 is_contradictory = True
                 break
-
         if not is_contradictory:
             self.statements.add(new_statement)
-
         return not is_contradictory
 
-    def _process_initial_statements(self, new_statements_to_process: list["Statement"]):
+    def _handle_contradiction(
+        self, contradictory_statement: Statement
+    ) -> Optional["BeliefSystem"]:
+        if self.strategy == ForkingStrategy.COEXIST:
+            return self.fork(contradictory_statement)
+        return None  # PRESERVE and other future strategies don't fork
+
+    def _process_initial_statements(
+        self, new_statements_to_process: list["Statement"]
+    ) -> Optional["BeliefSystem"]:
         forked_belief_system = None
         for statement_to_add in new_statements_to_process:
             if not self.add_statement(statement_to_add):
-                forked_belief_system = self.fork(statement_to_add)
+                forked_belief_system = self._handle_contradiction(statement_to_add)
                 break
         return forked_belief_system
 
     def _perform_inference(self):
         applied_rules_set = set()
         derived_facts_in_this_run = set()
-
         while True:
             newly_inferred_this_pass = set()
             for rule in self.rules:
@@ -243,18 +263,14 @@ class BeliefSystem:
                     if inferred_statement not in self.statements:
                         if not self.add_statement(inferred_statement):
                             raise InferredContradiction(inferred_statement)
-
                         newly_inferred_this_pass.add(inferred_statement)
                         applied_rules_set.add(rule)
-
             if not newly_inferred_this_pass:
                 break
             derived_facts_in_this_run.update(newly_inferred_this_pass)
-
         return list(derived_facts_in_this_run), list(applied_rules_set)
 
     def simulate(self, new_statements_to_process: list["Statement"]):
-        # Propagate simulation to all existing forks first
         for fork in self.forks:
             fork.simulate(new_statements_to_process)
 
@@ -269,7 +285,7 @@ class BeliefSystem:
             try:
                 derived_facts, applied_rules = self._perform_inference()
             except InferredContradiction as e:
-                forked_belief_system = self.fork(e.statement)
+                forked_belief_system = self._handle_contradiction(e.statement)
                 derived_facts = []
                 applied_rules = []
 

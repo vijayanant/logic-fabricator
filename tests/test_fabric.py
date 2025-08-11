@@ -7,6 +7,7 @@ from logic_fabricator.fabric import (
     ContradictionRecord,
     SimulationResult,
     SimulationRecord,
+    ForkingStrategy,
 )
 
 
@@ -74,6 +75,20 @@ def test_rule_generates_consequence_from_bindings():
     expected_statement = Statement(verb="is", terms=["Socrates", "mortal"])
     assert generated_statement.verb == expected_statement.verb
     assert generated_statement.terms == expected_statement.terms
+    assert generated_statement.negated == expected_statement.negated
+
+
+def test_rule_generates_negated_consequence():
+    # This test verifies that the `negated` flag is correctly carried
+    # from the consequence template to the generated statement.
+    condition = Condition(verb="is", terms=["?x", "a man"])
+    consequence_template = Statement(verb="is", terms=["?x", "immortal"], negated=True)
+    rule = Rule(condition=condition, consequence=consequence_template)
+
+    bindings = {"?x": "Socrates"}
+    generated_statement = rule.generate_consequence(bindings)
+
+    assert generated_statement.negated is True
 
 
 def test_contradiction_detection_simple():
@@ -527,3 +542,32 @@ def test_belief_system_forks_when_rule_consequence_is_a_contradiction():
     # 6. Assert the forked system contains the full paradox.
     assert existing_statement in forked_system.statements
     assert contradictory_statement in forked_system.statements
+
+
+def test_belief_system_with_preserve_strategy_rejects_contradiction():
+    """
+    Tests that a BeliefSystem configured with the PRESERVE strategy
+    does not fork and rejects the contradictory statement.
+    """
+    # 1. Setup a belief system with the PRESERVE strategy
+    initial_statement = Statement(verb="is", terms=["sky", "blue"])
+    belief_system = BeliefSystem(
+        rules=[],
+        contradiction_engine=ContradictionEngine(),
+        strategy=ForkingStrategy.PRESERVE,
+    )
+    belief_system.add_statement(initial_statement)
+
+    # 2. Introduce a contradictory statement
+    contradictory_statement = Statement(verb="is", terms=["sky", "blue"], negated=True)
+    sim_result = belief_system.simulate([contradictory_statement])
+
+    # 3. Assert that NO fork was created
+    assert sim_result.forked_belief_system is None, "No fork should be created with PRESERVE strategy"
+
+    # 4. Assert that the contradictory statement was not added
+    assert contradictory_statement not in belief_system.statements
+
+    # 5. Assert that the contradiction was still recorded
+    assert len(belief_system.contradictions) == 1
+    assert belief_system.contradictions[0].statement1 == contradictory_statement
