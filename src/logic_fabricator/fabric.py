@@ -5,13 +5,17 @@ from typing import Optional
 class ForkingStrategy(enum.Enum):
     COEXIST = "coexist"
     PRESERVE = "preserve"
+    PRIORITIZE_NEW = "prioritize_new"
 
 
 class Statement:
-    def __init__(self, verb: str, terms: list[str], negated: bool = False):
+    def __init__(
+        self, verb: str, terms: list[str], negated: bool = False, priority: float = 1.0
+    ):
         self.verb = verb
         self.terms = terms
         self.negated = negated
+        self.priority = priority
 
     def __eq__(self, other):
         if not isinstance(other, Statement):
@@ -20,10 +24,11 @@ class Statement:
             self.verb == other.verb
             and self.terms == other.terms
             and self.negated == other.negated
+            and self.priority == other.priority
         )
 
     def __hash__(self):
-        return hash((self.verb, tuple(self.terms), self.negated))
+        return hash((self.verb, tuple(self.terms), self.negated, self.priority))
 
 
 class Condition:
@@ -210,14 +215,13 @@ class BeliefSystem:
         self.mcp_records = []
         self.forks = []
 
-    def fork(self, new_statement: Statement) -> "BeliefSystem":
+    def fork(self, statements: set[Statement]) -> "BeliefSystem":
         forked_system = BeliefSystem(
             rules=list(self.rules),
             contradiction_engine=self.contradiction_engine,
             strategy=self.strategy,  # Forks inherit the parent's strategy
         )
-        forked_system.statements = self.statements.copy()
-        forked_system.statements.add(new_statement)
+        forked_system.statements = statements
         self.forks.append(forked_system)
         return forked_system
 
@@ -237,9 +241,33 @@ class BeliefSystem:
     def _handle_contradiction(
         self, contradictory_statement: Statement
     ) -> Optional["BeliefSystem"]:
-        if self.strategy == ForkingStrategy.COEXIST:
-            return self.fork(contradictory_statement)
-        return None  # PRESERVE and other future strategies don't fork
+        if self.strategy == ForkingStrategy.PRESERVE:
+            return None  # Do nothing
+
+        # For both COEXIST and PRIORITIZE_NEW, we create a fork.
+        # The difference is what we put inside it.
+        new_statements = self.statements.copy()
+
+        if self.strategy == ForkingStrategy.PRIORITIZE_NEW:
+            old_statement = next(
+                (s for s in self.statements if self.contradiction_engine.detect(contradictory_statement, s)),
+                None,
+            )
+            if old_statement:
+                # Create the new, prioritized statement and add it
+                prioritized_statement = Statement(
+                    verb=contradictory_statement.verb,
+                    terms=contradictory_statement.terms,
+                    negated=contradictory_statement.negated,
+                    priority=old_statement.priority + 0.1,
+                )
+                new_statements.add(prioritized_statement)
+            else:
+                 new_statements.add(contradictory_statement) # Fallback
+        else:  # COEXIST
+            new_statements.add(contradictory_statement)
+
+        return self.fork(new_statements)
 
     def _process_initial_statements(
         self, new_statements_to_process: list["Statement"]

@@ -73,9 +73,7 @@ def test_rule_generates_consequence_from_bindings():
 
     generated_statement = rule.generate_consequence(bindings)
     expected_statement = Statement(verb="is", terms=["Socrates", "mortal"])
-    assert generated_statement.verb == expected_statement.verb
-    assert generated_statement.terms == expected_statement.terms
-    assert generated_statement.negated == expected_statement.negated
+    assert generated_statement == expected_statement
 
 
 def test_rule_generates_negated_consequence():
@@ -571,3 +569,41 @@ def test_belief_system_with_preserve_strategy_rejects_contradiction():
     # 5. Assert that the contradiction was still recorded
     assert len(belief_system.contradictions) == 1
     assert belief_system.contradictions[0].statement1 == contradictory_statement
+
+
+def test_belief_system_with_prioritize_new_strategy_forks_with_prioritized_statement():
+    """
+    Tests that a BeliefSystem with PRIORITIZE_NEW strategy forks and gives the
+    new statement a higher priority.
+    """
+    # 1. Setup
+    initial_statement = Statement(
+        verb="is", terms=["sky", "blue"], priority=1.0
+    )
+    belief_system = BeliefSystem(
+        rules=[],
+        contradiction_engine=ContradictionEngine(),
+        strategy=ForkingStrategy.PRIORITIZE_NEW,
+    )
+    belief_system.add_statement(initial_statement)
+
+    # 2. Introduce a contradictory statement
+    contradictory_statement = Statement(
+        verb="is", terms=["sky", "blue"], negated=True, priority=1.0
+    )
+    sim_result = belief_system.simulate([contradictory_statement])
+
+    # 3. Assert that a fork was created
+    assert sim_result.forked_belief_system is not None
+    forked_system = sim_result.forked_belief_system
+
+    # 4. Find the statements in the forked system
+    old_statement_in_fork = next(
+        s for s in forked_system.statements if not s.negated
+    )
+    new_statement_in_fork = next(
+        s for s in forked_system.statements if s.negated
+    )
+
+    # 5. Assert that the new statement has a higher priority
+    assert new_statement_in_fork.priority > old_statement_in_fork.priority
