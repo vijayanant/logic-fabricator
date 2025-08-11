@@ -607,3 +607,40 @@ def test_belief_system_with_prioritize_new_strategy_forks_with_prioritized_state
 
     # 5. Assert that the new statement has a higher priority
     assert new_statement_in_fork.priority > old_statement_in_fork.priority
+
+def test_belief_system_with_prioritize_old_strategy_forks_with_deprioritized_statement():
+    """
+    Tests that a BeliefSystem with PRIORITIZE_OLD strategy forks and gives the
+    new statement a lower priority.
+    """
+    # 1. Setup
+    initial_statement = Statement(
+        verb="is", terms=["truth", "established"], priority=1.0
+    )
+    belief_system = BeliefSystem(
+        rules=[],
+        contradiction_engine=ContradictionEngine(),
+        strategy=ForkingStrategy.PRIORITIZE_OLD,
+    )
+    belief_system.add_statement(initial_statement)
+
+    # 2. Introduce a contradictory statement
+    contradictory_statement = Statement(
+        verb="is", terms=["truth", "established"], negated=True, priority=1.0
+    )
+    sim_result = belief_system.simulate([contradictory_statement])
+
+    # 3. Assert that a fork was created
+    assert sim_result.forked_belief_system is not None
+    forked_system = sim_result.forked_belief_system
+
+    # 4. Find the statements in the forked system
+    old_statement_in_fork = next(
+        s for s in forked_system.statements if not s.negated
+    )
+    new_statement_in_fork = next(
+        s for s in forked_system.statements if s.negated
+    )
+
+    # 5. Assert that the old statement has a higher priority
+    assert old_statement_in_fork.priority > new_statement_in_fork.priority

@@ -6,6 +6,7 @@ class ForkingStrategy(enum.Enum):
     COEXIST = "coexist"
     PRESERVE = "preserve"
     PRIORITIZE_NEW = "prioritize_new"
+    PRIORITIZE_OLD = "prioritize_old"
 
 
 class Statement:
@@ -244,26 +245,24 @@ class BeliefSystem:
         if self.strategy == ForkingStrategy.PRESERVE:
             return None  # Do nothing
 
-        # For both COEXIST and PRIORITIZE_NEW, we create a fork.
-        # The difference is what we put inside it.
         new_statements = self.statements.copy()
 
-        if self.strategy == ForkingStrategy.PRIORITIZE_NEW:
+        if self.strategy in [ForkingStrategy.PRIORITIZE_NEW, ForkingStrategy.PRIORITIZE_OLD]:
             old_statement = next(
                 (s for s in self.statements if self.contradiction_engine.detect(contradictory_statement, s)),
                 None,
             )
             if old_statement:
-                # Create the new, prioritized statement and add it
-                prioritized_statement = Statement(
+                priority_adjustment = 0.1 if self.strategy == ForkingStrategy.PRIORITIZE_NEW else -0.1
+                modified_statement = Statement(
                     verb=contradictory_statement.verb,
                     terms=contradictory_statement.terms,
                     negated=contradictory_statement.negated,
-                    priority=old_statement.priority + 0.1,
+                    priority=old_statement.priority + priority_adjustment,
                 )
-                new_statements.add(prioritized_statement)
+                new_statements.add(modified_statement)
             else:
-                 new_statements.add(contradictory_statement) # Fallback
+                new_statements.add(contradictory_statement)  # Fallback
         else:  # COEXIST
             new_statements.add(contradictory_statement)
 
