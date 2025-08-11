@@ -43,11 +43,13 @@ All while keeping it fun, transparent, and user-driven.
 - Handles rule conflict resolution and contradiction policy.
 - Think of it like a logic-space Git branch.
 
-### 4. **Simulation Engine** *(to come)*
+### 4. **Simulation Engine**
 
-- Runs a sequence of statements through a belief system.
-- Captures inferred consequences.
-- Handles contradictions as fork points, not failures.
+- The orchestrator of the logic-space.
+- Takes a `BeliefSystem` and a `WorldState` as input.
+- Runs the inference loop, applying rules from the `BeliefSystem` to its `WorldState`.
+- Captures inferred consequences (`Statements` and `Effects`).
+- Handles contradictions by forking the `BeliefSystem`.
 
 ### 5. **LLM Integration** *(external brain)*
 
@@ -72,11 +74,12 @@ All while keeping it fun, transparent, and user-driven.
 graph TD
     A[User: natural rule or statement]
     A --> B[LLM: parse & structure]
-    B --> C[Logic Engine: apply rules]
-    C --> D[Simulation: generate result or contradiction]
-    D --> E[LLM: explain outcome]
-    E --> F[User]
-    C --> G[MCP: store logic history]
+    B --> C{BeliefSystem}
+    C --> D[Simulation Engine]
+    D --> E{WorldState}
+    D --> F[LLM: explain outcome]
+    F --> G[User]
+    D --> H[MCP: store logic history]
 ```
 
 ---
@@ -86,6 +89,7 @@ graph TD
 - ✅ Parse Rule and Statement into simple objects
 - ✅ Check if Rule applies to Statement (hardcoded logic)
 - ✅ Follow TDD for every evolution step
+- ✅ Decoupled Simulation Engine
 - 🚧 Evaluate belief systems (planned)
 - 🚧 Support contradictions and forks
 - 🚧 Hook in LLM later

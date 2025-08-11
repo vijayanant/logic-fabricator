@@ -154,7 +154,7 @@ class Rule:
                 )  # Use bound value, or original term if not found
             else:
                 new_terms.append(term)
-        return Statement(verb=new_verb, terms=new_terms)
+        return Statement(verb=new_verb, terms=new_terms, negated=self.consequence.negated)
 
 
 class ContradictionEngine:
@@ -182,6 +182,9 @@ class ContradictionRecord:
     def __hash__(self):
         return hash((self.statement1, self.statement2))
 
+class InferredContradiction(Exception):
+    def __init__(self, statement):
+        self.statement = statement
 
 class BeliefSystem:
     def __init__(self, rules: list[Rule], contradiction_engine: ContradictionEngine):
@@ -197,9 +200,8 @@ class BeliefSystem:
         forked_system = BeliefSystem(
             rules=list(self.rules), contradiction_engine=self.contradiction_engine
         )
-        # Add all statements from the current system to the forked system
-        for s in self.statements:
-            forked_system.add_statement(s)
+        # Directly copy the statements, bypassing the contradiction check for existing truths
+        forked_system.statements = self.statements.copy()
         # Add the new statement that caused the fork directly to the forked system
         forked_system.statements.add(new_statement)
         self.forks.append(forked_system)
@@ -239,9 +241,11 @@ class BeliefSystem:
                 if bindings:
                     inferred_statement = rule.generate_consequence(bindings)
                     if inferred_statement not in self.statements:
-                        if self.add_statement(inferred_statement):
-                            newly_inferred_this_pass.add(inferred_statement)
-                            applied_rules_set.add(rule)
+                        if not self.add_statement(inferred_statement):
+                            raise InferredContradiction(inferred_statement)
+
+                        newly_inferred_this_pass.add(inferred_statement)
+                        applied_rules_set.add(rule)
 
             if not newly_inferred_this_pass:
                 break
@@ -258,11 +262,16 @@ class BeliefSystem:
             new_statements_to_process
         )
 
-        if forked_belief_system:
-            derived_facts = []
-            applied_rules = []
-        else:
-            derived_facts, applied_rules = self._perform_inference()
+        derived_facts = []
+        applied_rules = []
+
+        if not forked_belief_system:
+            try:
+                derived_facts, applied_rules = self._perform_inference()
+            except InferredContradiction as e:
+                forked_belief_system = self.fork(e.statement)
+                derived_facts = []
+                applied_rules = []
 
         simulation_result = SimulationResult(
             derived_facts=derived_facts,

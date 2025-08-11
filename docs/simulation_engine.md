@@ -6,7 +6,7 @@
 
 ## 🎯 Purpose
 
-The Simulation Engine processes a sequence of natural-language statements within a BeliefSystem. It evaluates each statement against the active rules, determines consequences, detects contradictions, and records the evolution of logic.
+The Simulation Engine is the orchestrator of the logic-space. It takes a `BeliefSystem` and a `WorldState` as input, and processes a sequence of natural-language statements. It evaluates each statement against the active rules in the `BeliefSystem`, determines consequences (both new `Statements` and `Effects` on the `WorldState`), detects contradictions, and records the evolution of logic.
 
 Think of it as a turn-based logic interpreter — like running a story through a brain made of belief.
 
@@ -24,14 +24,15 @@ Think of it as a turn-based logic interpreter — like running a story through a
 
 1. **Input Statement** (natural language)
 2. **Structure Statement** (LLM or parser)
-3. **Check Applicable Rules**
-4. **Evaluate Statement**
-   - Match against rules
-   - Apply consequences
-   - Record new derived facts (optional)
-5. **Check for Contradictions**
+3. **Run Inference Loop**:
+    - Get rules and statements from the `BeliefSystem`.
+    - Apply rules to find consequences (`Statements` and `Effects`).
+    - Apply the `Effects` to its `WorldState`.
+    - Add the new `Statements` back to the `BeliefSystem`'s state.
+    - Loop until no new consequences are generated.
+4. **Check for Contradictions**
    - If found: pause, fork, or escalate
-6. **Record All Activity** in MCP
+5. **Record All Activity** in MCP
 
 ---
 
@@ -67,21 +68,20 @@ Statement(
 )
 ```
 
-These are run sequentially through a `BeliefSystem.simulate()` method.
+These are run sequentially through a `Simulation.run()` method.
 
 ---
 
 ## 🧠 Output
 
-Simulation returns a result object with:
+The `Simulation.run()` method creates a `SimulationRecord` object with the following information, which is stored in the `simulation.mcp_records` list:
 
 ```python
-class SimulationResult:
-    applied_rules: list[Rule]
+class SimulationRecord:
+    initial_statements: list[Statement]
     derived_facts: list[Statement]
-    contradictions: list[Contradiction]
-    forked_beliefs: list[BeliefSystem]  # if applicable
-    trace_log: list[str]                # human-readable narrative
+    applied_rules: list[Rule]
+    forked_belief_system: BeliefSystem | None
 ```
 
 This lets us:
@@ -136,7 +136,7 @@ Input: "Ravi trusts Alice"
 
 ## 🏗️ Next Steps
 
-1. Implement a basic `simulate(statement)` method in BeliefSystem
+1. Implement a basic `Simulation.run()` method
 2. Structure the return object with traceability in mind
 3. Add contradiction detection
 4. Later: batch simulation, branching scenarios, and user-facing visual logs

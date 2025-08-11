@@ -457,3 +457,73 @@ def test_fork_has_independent_and_empty_initial_mcp():
 
     # 5. Assert the parent's history remains unchanged
     assert len(parent_system.mcp_records) == 2 # Initial sim + the fork event
+
+
+def test_fork_can_itself_be_forked():
+    """
+    Tests that a forked belief system can, in turn, create its own forks,
+    establishing a multi-level "logic multiverse".
+    """
+    # 1. Setup parent and first-level fork
+    parent_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
+    parent_system.simulate([Statement(verb="is", terms=["A", "B"])])
+    sim_result_fork1 = parent_system.simulate(
+        [Statement(verb="is", terms=["A", "B"], negated=True)]
+    )
+    fork1 = sim_result_fork1.forked_belief_system
+    assert fork1 is not None
+
+    # 2. Introduce a new, different contradiction into the *first fork*
+    fork1.simulate([Statement(verb="is", terms=["C", "D"])])
+    sim_result_fork2 = fork1.simulate(
+        [Statement(verb="is", terms=["C", "D"], negated=True)]
+    )
+    fork2 = sim_result_fork2.forked_belief_system
+    assert fork2 is not None
+
+    # 3. Assert that fork2 is a child of fork1, not the parent
+    assert fork2 in fork1.forks
+    assert fork2 not in parent_system.forks
+
+    # 4. Assert that fork2 contains the state from fork1
+    assert Statement(verb="is", terms=["A", "B"]) in fork2.statements
+    assert Statement(verb="is", terms=["A", "B"], negated=True) in fork2.statements
+    assert Statement(verb="is", terms=["C", "D"]) in fork2.statements
+    assert Statement(verb="is", terms=["C", "D"], negated=True) in fork2.statements
+
+
+def test_belief_system_forks_when_rule_consequence_is_a_contradiction():
+    """
+    Tests the final piece of the MVP: the system must fork when a rule's
+    consequence contradicts an existing statement during the inference phase.
+    """
+    # 1. Setup a belief system with an established fact.
+    existing_statement = Statement(verb="is", terms=["Socrates", "mortal"])
+    belief_system = BeliefSystem(
+        rules=[], contradiction_engine=ContradictionEngine()
+    )
+    belief_system.add_statement(existing_statement)
+
+    # 2. Add a rule that, when triggered, will contradict the established fact.
+    rule = Rule(
+        condition=Condition(verb="is", terms=["?x", "a man"]),
+        consequence=Statement(verb="is", terms=["?x", "mortal"], negated=True),
+    )
+    belief_system.rules.append(rule)
+
+    # 3. Simulate with a statement that triggers the rule.
+    trigger_statement = Statement(verb="is", terms=["Socrates", "a man"])
+    sim_result = belief_system.simulate([trigger_statement])
+
+    # 4. Assert that a fork was created.
+    assert sim_result.forked_belief_system is not None, "A fork should have been created"
+    forked_system = sim_result.forked_belief_system
+
+    # 5. Assert the original system is unchanged and contains no new contradictory facts.
+    contradictory_statement = Statement(verb="is", terms=["Socrates", "mortal"], negated=True)
+    assert contradictory_statement not in belief_system.statements
+    assert len(belief_system.mcp_records) == 1 # Should only contain the fork record
+
+    # 6. Assert the forked system contains the full paradox.
+    assert existing_statement in forked_system.statements
+    assert contradictory_statement in forked_system.statements
