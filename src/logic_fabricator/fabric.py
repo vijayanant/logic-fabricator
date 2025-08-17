@@ -152,41 +152,65 @@ class Condition:
             return None  # No match found for any statement
 
 
+class Effect:
+    def __init__(self, target: str, attribute: str, operation: str, value: any):
+        self.target = target
+        self.attribute = attribute
+        self.operation = operation
+        self.value = value
+
+    def __eq__(self, other):
+        if not isinstance(other, Effect):
+            return NotImplemented
+        return (
+            self.target == other.target
+            and self.attribute == other.attribute
+            and self.operation == other.operation
+            and self.value == other.value
+        )
+
+    def __hash__(self):
+        return hash((self.target, self.attribute, self.operation, self.value))
+
+
 class Rule:
-    def __init__(self, condition: Condition, consequence: Statement):
+    def __init__(self, condition: Condition, consequences: list):
         self.condition = condition
-        self.consequence = consequence
+        self.consequences = consequences
 
     def __eq__(self, other):
         if not isinstance(other, Rule):
             return NotImplemented
         return (
-            self.condition == other.condition and self.consequence == other.consequence
+            self.condition == other.condition and self.consequences == other.consequences
         )
 
     def __hash__(self):
-        return hash((self.condition, self.consequence))
+        return hash((self.condition, tuple(self.consequences)))
 
     def applies_to(self, statements: list["Statement"]) -> dict | None:
         return self.condition.matches(statements)
 
-    def generate_consequence(self, bindings: dict) -> Statement:
-        new_verb = self.consequence.verb
+    @staticmethod
+    def _resolve_statement_from_template(
+        template_statement: Statement, bindings: dict
+    ) -> Statement:
         new_terms = []
-        for term in self.consequence.terms:
-            if term.startswith("?"):
-                new_terms.append(
-                    bindings.get(term, term)
-                )  # Use bound value, or original term if not found
+        for term in template_statement.terms:
+            if isinstance(term, str) and term.startswith("?"):
+                new_terms.append(bindings.get(term, term))
             else:
                 new_terms.append(term)
-        return Statement(verb=new_verb, terms=new_terms, negated=self.consequence.negated)
+        return Statement(
+            verb=template_statement.verb,
+            terms=new_terms,
+            negated=template_statement.negated,
+            priority=template_statement.priority,
+        )
 
 
 class ContradictionEngine:
     def detect(self, s1: Statement, s2: Statement) -> bool:
-        # Contradiction is defined as a statement and its direct negation.
-        # e.g., "Socrates is alive" and "Socrates is not alive"
         if s1.verb == s2.verb and s1.terms == s2.terms and s1.negated != s2.negated:
             return True
 
@@ -212,6 +236,24 @@ class InferredContradiction(Exception):
     def __init__(self, statement):
         self.statement = statement
 
+def op_set(current_value, new_value):
+    return new_value
+
+
+def op_increment(current_value, new_value):
+    return (current_value or 0) + new_value
+
+
+def op_decrement(current_value, new_value):
+    return (current_value or 0) - new_value
+
+
+def op_append(current_value, new_value):
+    current_list = list(current_value or [])
+    current_list.append(new_value)
+    return current_list
+
+
 class BeliefSystem:
     def __init__(
         self,
@@ -226,14 +268,22 @@ class BeliefSystem:
         self.contradictions = []
         self.mcp_records = []
         self.forks = []
+        self.world_state = {}
+        self.world_state_operations = {
+            "set": op_set,
+            "increment": op_increment,
+            "decrement": op_decrement,
+            "append": op_append,
+        }
 
     def fork(self, statements: set[Statement]) -> "BeliefSystem":
         forked_system = BeliefSystem(
             rules=list(self.rules),
             contradiction_engine=self.contradiction_engine,
-            strategy=self.strategy,  # Forks inherit the parent's strategy
+            strategy=self.strategy,
         )
         forked_system.statements = statements
+        forked_system.world_state = {k: v for k, v in self.world_state.items()}
         self.forks.append(forked_system)
         return forked_system
 
@@ -254,7 +304,7 @@ class BeliefSystem:
         self, contradictory_statement: Statement
     ) -> Optional["BeliefSystem"]:
         if self.strategy == ForkingStrategy.PRESERVE:
-            return None  # Do nothing
+            return None
 
         new_statements = self.statements.copy()
 
@@ -273,7 +323,7 @@ class BeliefSystem:
                 )
                 new_statements.add(modified_statement)
             else:
-                new_statements.add(contradictory_statement)  # Fallback
+                new_statements.add(contradictory_statement)
         else:  # COEXIST
             new_statements.add(contradictory_statement)
 
@@ -289,20 +339,48 @@ class BeliefSystem:
                 break
         return forked_belief_system
 
+    def _execute_effect(self, effect: Effect, bindings: dict):
+        if effect.target == "world_state":
+            operation_func = self.world_state_operations.get(effect.operation)
+            if operation_func:
+                key_template = effect.attribute
+                value_template = effect.value
+
+                key = bindings.get(key_template, key_template)
+                if isinstance(value_template, str) and value_template.startswith("?"):
+                    value = bindings.get(value_template, value_template)
+                else:
+                    value = value_template
+                
+                current_value = self.world_state.get(key)
+                self.world_state[key] = operation_func(current_value, value)
+
     def _perform_inference(self):
         applied_rules_set = set()
+        effects_applied_this_run = set()
         derived_facts_in_this_run = set()
         while True:
             newly_inferred_this_pass = set()
             for rule in self.rules:
                 bindings = rule.applies_to(list(self.statements))
-                if bindings:
-                    inferred_statement = rule.generate_consequence(bindings)
-                    if inferred_statement not in self.statements:
-                        if not self.add_statement(inferred_statement):
-                            raise InferredContradiction(inferred_statement)
-                        newly_inferred_this_pass.add(inferred_statement)
-                        applied_rules_set.add(rule)
+                if bindings is not None:
+                    for consequence in rule.consequences:
+                        if isinstance(consequence, Statement):
+                            inferred_statement = Rule._resolve_statement_from_template(
+                                consequence, bindings
+                            )
+                            if inferred_statement not in self.statements:
+                                if not self.add_statement(inferred_statement):
+                                    raise InferredContradiction(inferred_statement)
+                                newly_inferred_this_pass.add(inferred_statement)
+                                applied_rules_set.add(rule)
+                        elif isinstance(consequence, Effect):
+                            effect_key = (rule, frozenset(bindings.items()))
+                            if effect_key not in effects_applied_this_run:
+                                self._execute_effect(consequence, bindings)
+                                applied_rules_set.add(rule)
+                                effects_applied_this_run.add(effect_key)
+
             if not newly_inferred_this_pass:
                 break
             derived_facts_in_this_run.update(newly_inferred_this_pass)
@@ -381,7 +459,6 @@ class SimulationRecord:
         )
 
     def __hash__(self):
-        # Convert lists to tuples for hashing
         return hash(
             (
                 tuple(self.initial_statements),
