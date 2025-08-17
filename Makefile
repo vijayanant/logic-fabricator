@@ -13,7 +13,7 @@ test:
 	docker run --rm -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run pytest
 
 run:
-	docker run --rm -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run python src/logic_fabricator/main.py
+	docker run --rm -it -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run python main.py
 
 tag-dev:
 	docker tag $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):dev

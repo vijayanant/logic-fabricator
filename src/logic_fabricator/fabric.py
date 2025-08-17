@@ -18,6 +18,10 @@ class Statement:
         self.negated = negated
         self.priority = priority
 
+    def __repr__(self):
+        neg_str = "NOT " if self.negated else ""
+        return f"Statement({neg_str}{self.verb} {' '.join(self.terms)})"
+
     def __eq__(self, other):
         if not isinstance(other, Statement):
             return NotImplemented
@@ -52,6 +56,12 @@ class Condition:
                 )
             self.verb = verb
             self.terms = terms
+
+    def __repr__(self):
+        if self.and_conditions:
+            return f"Condition(AND: {' & '.join(map(repr, self.and_conditions))})"
+        else:
+            return f"Condition({self.verb} {' '.join(self.terms)})"
 
     def __eq__(self, other):
         if not isinstance(other, Condition):
@@ -159,6 +169,9 @@ class Effect:
         self.operation = operation
         self.value = value
 
+    def __repr__(self):
+        return f"Effect({self.operation} {self.target}.{self.attribute} to {self.value})"
+
     def __eq__(self, other):
         if not isinstance(other, Effect):
             return NotImplemented
@@ -177,6 +190,9 @@ class Rule:
     def __init__(self, condition: Condition, consequences: list):
         self.condition = condition
         self.consequences = consequences
+
+    def __repr__(self):
+        return f"Rule(IF {self.condition} THEN {', '.join(map(repr, self.consequences))})"
 
     def __eq__(self, other):
         if not isinstance(other, Rule):
