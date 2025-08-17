@@ -9,19 +9,18 @@ RUN apt-get update && apt-get install -y curl && \
   curl -sSL https://install.python-poetry.org | python3 - && \
   ln -s /root/.local/bin/poetry /usr/local/bin/poetry
 
-# Disable Poetry virtualenvs (we want everything installed globally in container)
+# Disable Poetry virtualenvs
 ENV POETRY_VIRTUALENVS_CREATE=false
 
-# Copy only dependency files first (to leverage Docker cache)
-COPY pyproject.toml poetry.lock ./
-
-# Install dependencies
-RUN poetry install --no-root
-
-# Copy the rest of the code
+# Copy files required for installation
+COPY pyproject.toml poetry.lock README.md ./
 COPY src/ src/
-COPY tests/ tests/
 
-# Run tests as default command
-CMD ["poetry", "run", "pytest"]
+# Install all dependencies AND the project itself
+RUN poetry install
 
+# Copy the rest of the project files for completeness
+COPY . .
+
+# Run the interactive workbench as the default command
+CMD ["poetry", "run", "logic-fabricator"]

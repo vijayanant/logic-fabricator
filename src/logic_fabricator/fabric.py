@@ -170,7 +170,9 @@ class Effect:
         self.value = value
 
     def __repr__(self):
-        return f"Effect({self.operation} {self.target}.{self.attribute} to {self.value})"
+        return (
+            f"Effect({self.operation} {self.target}.{self.attribute} to {self.value})"
+        )
 
     def __eq__(self, other):
         if not isinstance(other, Effect):
@@ -192,13 +194,16 @@ class Rule:
         self.consequences = consequences
 
     def __repr__(self):
-        return f"Rule(IF {self.condition} THEN {', '.join(map(repr, self.consequences))})"
+        return (
+            f"Rule(IF {self.condition} THEN {', '.join(map(repr, self.consequences))})"
+        )
 
     def __eq__(self, other):
         if not isinstance(other, Rule):
             return NotImplemented
         return (
-            self.condition == other.condition and self.consequences == other.consequences
+            self.condition == other.condition
+            and self.consequences == other.consequences
         )
 
     def __hash__(self):
@@ -248,9 +253,11 @@ class ContradictionRecord:
     def __hash__(self):
         return hash((self.statement1, self.statement2))
 
+
 class InferredContradiction(Exception):
     def __init__(self, statement):
         self.statement = statement
+
 
 def op_set(current_value, new_value):
     return new_value
@@ -325,13 +332,22 @@ class BeliefSystem:
 
         new_statements = self.statements.copy()
 
-        if self.strategy in [ForkingStrategy.PRIORITIZE_NEW, ForkingStrategy.PRIORITIZE_OLD]:
+        if self.strategy in [
+            ForkingStrategy.PRIORITIZE_NEW,
+            ForkingStrategy.PRIORITIZE_OLD,
+        ]:
             old_statement = next(
-                (s for s in self.statements if self.contradiction_engine.detect(contradictory_statement, s)),
+                (
+                    s
+                    for s in self.statements
+                    if self.contradiction_engine.detect(contradictory_statement, s)
+                ),
                 None,
             )
             if old_statement:
-                priority_adjustment = 0.1 if self.strategy == ForkingStrategy.PRIORITIZE_NEW else -0.1
+                priority_adjustment = (
+                    0.1 if self.strategy == ForkingStrategy.PRIORITIZE_NEW else -0.1
+                )
                 modified_statement = Statement(
                     verb=contradictory_statement.verb,
                     terms=contradictory_statement.terms,
@@ -368,7 +384,7 @@ class BeliefSystem:
                     value = bindings.get(value_template, value_template)
                 else:
                     value = value_template
-                
+
                 current_value = self.world_state.get(key)
                 self.world_state[key] = operation_func(current_value, value)
 
@@ -483,3 +499,4 @@ class SimulationRecord:
                 self.forked_belief_system,
             )
         )
+
