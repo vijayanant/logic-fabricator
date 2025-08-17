@@ -21,6 +21,7 @@ The core logic engine is now functional. It currently supports:
 -   **Structured Logic:** Defining `Rules` and `Statements` with conditions and consequences.
 -   **Contradiction Detection:** Identifying and handling direct contradictions between statements.
 -   **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
+-   **World State Effects:** The ability for rules to have `Effects` that directly modify a key-value `world_state`, allowing simulations to track and change state over time.
 -   **Traceability:** The results of a simulation include a record of which rules were applied to reach the conclusion.
 -   **Contradiction Forking:** When a contradiction is detected, the system can create a new, divergent belief system (a "fork") to explore alternative logical realities.
 
@@ -44,21 +45,31 @@ We use:
 
 ## 🚀 Usage
 
-### 🔨 Build + Test
+There are three primary commands you will use, all executed via the `Makefile`.
+
+### 1. Build the Environment
+
+This command builds the Docker image that contains the full environment and all dependencies. You only need to run this once to get started.
 
 ```bash
 make build
 ```
 
-This builds the Docker image and runs all tests inside the container.
+### 2. Run the Tests
 
-### ✨ Fast Dev (optional)
+To ensure the logical integrity of the engine, run the test suite.
 
 ```bash
-make dev
+make test
 ```
 
-Runs the image with your current code mounted — great for quick iterations.
+### 3. Launch the Workbench
+
+This is the main event. This command starts the interactive REPL, allowing you to fabricate and explore your own belief systems.
+
+```bash
+make run
+```
 
 ---
 

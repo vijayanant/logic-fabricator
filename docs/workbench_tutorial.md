@@ -141,3 +141,50 @@ As you build your world, don't forget the tools at your disposal:
 - `reset`: When your creation becomes too complex, wipe the slate clean and begin anew.
 
 You are now equipped. Go forth and fabricate. Create worlds, test their limits, and do not fear contradiction. It is merely the engine of creation.
+
+---
+
+## 7. Advanced Technique: The Speaking World
+
+You may eventually notice that rules are not triggered by changes in the `world_state`. An `Effect` can change the world, but the logic engine does not "see" this change. This is by design, to keep the flow of logic clear.
+
+So, how do we make the world "speak" back to the logic engine? We use the **Dual Consequence Pattern**.
+
+Let's demonstrate with an example of a world that is first mute, then made to speak.
+
+**Step 1: The Mute World**
+First, `reset` the workbench. Then, create a rule that turns a light on, and another rule that checks if the light is on.
+
+```
+>> effect is bell ringing -> set light on
+>> rule is light on -> are people awake
+```
+Now, simulate the bell ringing:
+```
+>> sim is bell ringing
+--- Simulation Report ---
+  >> No new facts were derived.
+  >> World State Changes:
+     - light: None -> on
+```
+Notice that the `world_state` changed, but the fact `are people awake` was not derived. The second rule never saw the change.
+
+**Step 2: The Speaking World**
+Now, let's try the Dual Consequence Pattern. `reset` the workbench again. We will create two rules for the same trigger. One creates the `Effect`, and the other creates the `Statement` that makes the effect observable.
+
+```
+>> effect is bell ringing -> set light on
+>> rule is bell ringing -> is light on
+>> rule is light on -> are people awake
+```
+Now, when we run the simulation:
+```
+>> sim is bell ringing
+--- Simulation Report ---
+  >> Derived Facts:
+     - is light on
+     - are people awake
+  >> World State Changes:
+     - light: None -> on
+```
+Success! By creating the `is light on` statement, we made the change in the world visible to the logic engine, which then allowed our second rule to fire. This pattern is key to building complex, reactive worlds.

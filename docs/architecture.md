@@ -82,6 +82,8 @@ graph TD
     D --> H[MCP: store logic history]
 ```
 
+**Note on Flow**: The diagram shows that the `Simulation Engine` produces a `WorldState`. It is a core principle that this is a one-way flow. The engine's rule evaluation is driven by `Statements` within the `BeliefSystem`, not by changes in the `WorldState`. This ensures a clear and traceable line of logical inference.
+
 ---
 
 ## ⏳ Current Scope (MVP)
