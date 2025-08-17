@@ -469,3 +469,26 @@ def test_rule_with_effect_and_statement_consequences():
     assert Statement(verb="is", terms=["Benedict", "exiled"]) in sim_result.derived_facts
     # Assert the Effect modified the world_state
     assert belief_system.world_state.get("population") == 9
+
+
+def test_effects_are_not_re_applied_across_simulations():
+    """Tests that an effect is not re-triggered by old statements in a new simulation."""
+    belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
+    rule = Rule(
+        condition=Condition(verb="is", terms=["?x", "dead"]),
+        consequences=[
+            Effect(target="world_state", attribute="population", operation="decrement", value=1)
+        ],
+    )
+    belief_system.rules.append(rule)
+    belief_system.world_state["population"] = 10
+
+    # First simulation, which should trigger the effect
+    first_statement = Statement(verb="is", terms=["jon", "dead"])
+    belief_system.simulate([first_statement])
+    assert belief_system.world_state.get("population") == 9
+
+    # Second, unrelated simulation
+    second_statement = Statement(verb="is", terms=["sky", "blue"])
+    belief_system.simulate([second_statement])
+    assert belief_system.world_state.get("population") == 9, "Effect was re-applied incorrectly!"

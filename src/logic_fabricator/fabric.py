@@ -285,6 +285,7 @@ class BeliefSystem:
         self.mcp_records = []
         self.forks = []
         self.world_state = {}
+        self.effects_applied = set()  # Permanent memory for applied effects
         self.world_state_operations = {
             "set": op_set,
             "increment": op_increment,
@@ -373,7 +374,6 @@ class BeliefSystem:
 
     def _perform_inference(self):
         applied_rules_set = set()
-        effects_applied_this_run = set()
         derived_facts_in_this_run = set()
         while True:
             newly_inferred_this_pass = set()
@@ -392,10 +392,10 @@ class BeliefSystem:
                                 applied_rules_set.add(rule)
                         elif isinstance(consequence, Effect):
                             effect_key = (rule, frozenset(bindings.items()))
-                            if effect_key not in effects_applied_this_run:
+                            if effect_key not in self.effects_applied:
                                 self._execute_effect(consequence, bindings)
                                 applied_rules_set.add(rule)
-                                effects_applied_this_run.add(effect_key)
+                                self.effects_applied.add(effect_key)
 
             if not newly_inferred_this_pass:
                 break
