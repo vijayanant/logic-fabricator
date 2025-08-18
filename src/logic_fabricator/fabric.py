@@ -255,6 +255,60 @@ class ContradictionEngine:
 
         return False
 
+    def _check_one_way_conflict(
+        self, rule_a: Rule, rule_b: Rule, context_rules: list[Rule]
+    ) -> bool:
+        """Checks if rule_b's condition can lead to a state that conflicts with rule_a."""
+        # Use a hypothetical entity for the simulation
+        hypothetical_entity = "_HYPOTHETICAL_ENTITY_"
+
+        # Create a hypothetical statement from rule_b's condition
+        if not rule_b.condition.terms or not rule_b.condition.terms[0].startswith("?"):
+            return False  # Cannot create a hypothetical case without a variable subject
+
+        var_name = rule_b.condition.terms[0]
+        hypothetical_terms = [
+            term if term != var_name else hypothetical_entity
+            for term in rule_b.condition.terms
+        ]
+        hypothetical_statement = Statement(
+            verb=rule_b.condition.verb, terms=hypothetical_terms
+        )
+
+        # Simulate the context rules with this hypothetical statement
+        temp_belief_system = BeliefSystem(rules=context_rules, contradiction_engine=self)
+        sim_result = temp_belief_system.simulate([hypothetical_statement])
+
+        # Combine initial and derived facts for checking rule applicability
+        all_facts = sim_result.derived_facts + [hypothetical_statement]
+
+        # Check if both rules apply to the resulting state
+        bindings_a = rule_a.applies_to(all_facts)
+        bindings_b = rule_b.applies_to(all_facts)
+
+        if bindings_a and bindings_b:
+            # If both apply, check their consequences for contradictions
+            for con_a in rule_a.consequences:
+                if not isinstance(con_a, Statement):
+                    continue
+                resolved_a = Rule._resolve_statement_from_template(con_a, bindings_a)
+                for con_b in rule_b.consequences:
+                    if not isinstance(con_b, Statement):
+                        continue
+                    resolved_b = Rule._resolve_statement_from_template(con_b, bindings_b)
+                    if self.detect(resolved_a, resolved_b):
+                        return True
+        return False
+
+    def detect_rule_conflict(
+        self, rule_a: Rule, rule_b: Rule, context_rules: list[Rule]
+    ) -> bool:
+        """Detects if two rules could conflict, given a set of context rules."""
+        # A conflict exists if rule_a can lead to a contradiction with rule_b, or vice-versa.
+        return self._check_one_way_conflict(
+            rule_a, rule_b, context_rules
+        ) or self._check_one_way_conflict(rule_b, rule_a, context_rules)
+
 
 class ContradictionRecord:
     def __init__(self, statement1: Statement, statement2: Statement):

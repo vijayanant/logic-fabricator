@@ -510,3 +510,33 @@ def test_rule_matches_with_wildcard_term():
         "?speaker": "Alice",
         "?speech": ["hello", "world", "and", "goodbye"],
     }
+
+def test_engine_detects_conflict_with_context():
+    """Tests that the engine can detect a conflict between two rules when a third rule provides the logical link."""
+    engine = ContradictionEngine()
+
+    # Rule 1: A penguin is a bird.
+    rule_implication = Rule(
+        condition=Condition(verb="is", terms=["?x", "a penguin"]),
+        consequences=[Statement(verb="is", terms=["?x", "a bird"])],
+    )
+
+    # Rule 2: A bird can fly.
+    rule_general = Rule(
+        condition=Condition(verb="is", terms=["?y", "a bird"]),
+        consequences=[Statement(verb="can", terms=["?y", "fly"])],
+    )
+
+    # Rule 3: A penguin cannot fly.
+    rule_specific = Rule(
+        condition=Condition(verb="is", terms=["?z", "a penguin"]),
+        consequences=[Statement(verb="can", terms=["?z", "fly"], negated=True)],
+    )
+
+    # The engine should detect that for a penguin, rule_general and rule_specific will have contradictory consequences.
+    assert (
+        engine.detect_rule_conflict(
+            rule_general, rule_specific, context_rules=[rule_implication]
+        )
+        is True
+    )
