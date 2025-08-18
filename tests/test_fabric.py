@@ -299,8 +299,8 @@ def test_simulation_propagates_to_forks():
     forked_system = sim_result_fork.forked_belief_system
     assert forked_system is not None
     fork_only_rule = Rule(
-        condition=Condition(verb="is", terms=['?x', "bright"]),
-        consequences=[Statement(verb="emits", terms=['?x', "light"])],
+        condition=Condition(verb="is", terms=["?x", "bright"]),
+        consequences=[Statement(verb="emits", terms=["?x", "light"])],
     )
     forked_system.rules.append(fork_only_rule)
     new_statement = Statement(verb="is", terms=["sun", "bright"])
@@ -349,9 +349,7 @@ def test_fork_can_itself_be_forked():
 
 def test_belief_system_forks_when_rule_consequence_is_a_contradiction():
     existing_statement = Statement(verb="is", terms=["Socrates", "mortal"])
-    belief_system = BeliefSystem(
-        rules=[], contradiction_engine=ContradictionEngine()
-    )
+    belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     belief_system.add_statement(existing_statement)
     rule = Rule(
         condition=Condition(verb="is", terms=["?x", "a man"]),
@@ -360,9 +358,13 @@ def test_belief_system_forks_when_rule_consequence_is_a_contradiction():
     belief_system.rules.append(rule)
     trigger_statement = Statement(verb="is", terms=["Socrates", "a man"])
     sim_result = belief_system.simulate([trigger_statement])
-    assert sim_result.forked_belief_system is not None, "A fork should have been created"
+    assert sim_result.forked_belief_system is not None, (
+        "A fork should have been created"
+    )
     forked_system = sim_result.forked_belief_system
-    contradictory_statement = Rule._resolve_statement_from_template(rule.consequences[0], {"?x": "Socrates"})
+    contradictory_statement = Rule._resolve_statement_from_template(
+        rule.consequences[0], {"?x": "Socrates"}
+    )
     assert contradictory_statement not in belief_system.statements
     assert len(belief_system.mcp_records) == 1
     assert existing_statement in forked_system.statements
@@ -379,16 +381,16 @@ def test_belief_system_with_preserve_strategy_rejects_contradiction():
     belief_system.add_statement(initial_statement)
     contradictory_statement = Statement(verb="is", terms=["sky", "blue"], negated=True)
     sim_result = belief_system.simulate([contradictory_statement])
-    assert sim_result.forked_belief_system is None, "No fork should be created with PRESERVE strategy"
+    assert sim_result.forked_belief_system is None, (
+        "No fork should be created with PRESERVE strategy"
+    )
     assert contradictory_statement not in belief_system.statements
     assert len(belief_system.contradictions) == 1
     assert belief_system.contradictions[0].statement1 == contradictory_statement
 
 
 def test_belief_system_with_prioritize_new_strategy_forks_with_prioritized_statement():
-    initial_statement = Statement(
-        verb="is", terms=["sky", "blue"], priority=1.0
-    )
+    initial_statement = Statement(verb="is", terms=["sky", "blue"], priority=1.0)
     belief_system = BeliefSystem(
         rules=[],
         contradiction_engine=ContradictionEngine(),
@@ -401,12 +403,8 @@ def test_belief_system_with_prioritize_new_strategy_forks_with_prioritized_state
     sim_result = belief_system.simulate([contradictory_statement])
     assert sim_result.forked_belief_system is not None
     forked_system = sim_result.forked_belief_system
-    old_statement_in_fork = next(
-        s for s in forked_system.statements if not s.negated
-    )
-    new_statement_in_fork = next(
-        s for s in forked_system.statements if s.negated
-    )
+    old_statement_in_fork = next(s for s in forked_system.statements if not s.negated)
+    new_statement_in_fork = next(s for s in forked_system.statements if s.negated)
     assert new_statement_in_fork.priority > old_statement_in_fork.priority
 
 
@@ -426,12 +424,8 @@ def test_belief_system_with_prioritize_old_strategy_forks_with_deprioritized_sta
     sim_result = belief_system.simulate([contradictory_statement])
     assert sim_result.forked_belief_system is not None
     forked_system = sim_result.forked_belief_system
-    old_statement_in_fork = next(
-        s for s in forked_system.statements if not s.negated
-    )
-    new_statement_in_fork = next(
-        s for s in forked_system.statements if s.negated
-    )
+    old_statement_in_fork = next(s for s in forked_system.statements if not s.negated)
+    new_statement_in_fork = next(s for s in forked_system.statements if s.negated)
     assert old_statement_in_fork.priority > new_statement_in_fork.priority
 
 
@@ -441,7 +435,9 @@ def test_rule_with_effect_modifies_world_state():
     rule = Rule(
         condition=Condition(verb="is", terms=["alarm", "on"]),
         consequences=[
-            Effect(target="world_state", attribute="status", operation="set", value="alert")
+            Effect(
+                target="world_state", attribute="status", operation="set", value="alert"
+            )
         ],
     )
     belief_system.rules.append(rule)
@@ -457,7 +453,12 @@ def test_rule_with_effect_and_statement_consequences():
         condition=Condition(verb="is", terms=["?x", "a traitor"]),
         consequences=[
             Statement(verb="is", terms=["?x", "exiled"]),
-            Effect(target="world_state", attribute="population", operation="decrement", value=1)
+            Effect(
+                target="world_state",
+                attribute="population",
+                operation="decrement",
+                value=1,
+            ),
         ],
     )
     belief_system.world_state["population"] = 10
@@ -466,7 +467,9 @@ def test_rule_with_effect_and_statement_consequences():
     sim_result = belief_system.simulate([initial_statement])
 
     # Assert the Statement was inferred
-    assert Statement(verb="is", terms=["Benedict", "exiled"]) in sim_result.derived_facts
+    assert (
+        Statement(verb="is", terms=["Benedict", "exiled"]) in sim_result.derived_facts
+    )
     # Assert the Effect modified the world_state
     assert belief_system.world_state.get("population") == 9
 
@@ -477,7 +480,12 @@ def test_effects_are_not_re_applied_across_simulations():
     rule = Rule(
         condition=Condition(verb="is", terms=["?x", "dead"]),
         consequences=[
-            Effect(target="world_state", attribute="population", operation="decrement", value=1)
+            Effect(
+                target="world_state",
+                attribute="population",
+                operation="decrement",
+                value=1,
+            )
         ],
     )
     belief_system.rules.append(rule)
@@ -491,7 +499,10 @@ def test_effects_are_not_re_applied_across_simulations():
     # Second, unrelated simulation
     second_statement = Statement(verb="is", terms=["sky", "blue"])
     belief_system.simulate([second_statement])
-    assert belief_system.world_state.get("population") == 9, "Effect was re-applied incorrectly!"
+    assert belief_system.world_state.get("population") == 9, (
+        "Effect was re-applied incorrectly!"
+    )
+
 
 def test_rule_matches_based_on_statement_structure():
     statement = Statement(verb="gives", terms=["Alice", "the book", "to", "Bob"])
@@ -500,8 +511,11 @@ def test_rule_matches_based_on_statement_structure():
     bindings = rule.applies_to([statement])
     assert bindings == {"?x": "Alice", "?y": "the book", "?z": "Bob"}
 
+
 def test_rule_matches_with_wildcard_term():
-    statement = Statement(verb="says", terms=["Alice", "hello", "world", "and", "goodbye"])
+    statement = Statement(
+        verb="says", terms=["Alice", "hello", "world", "and", "goodbye"]
+    )
     # The condition looks for a speaker and captures the rest of the terms as their speech.
     condition = Condition(verb="says", terms=["?speaker", "*speech"])
     rule = Rule(condition=condition, consequences=[])
@@ -510,6 +524,7 @@ def test_rule_matches_with_wildcard_term():
         "?speaker": "Alice",
         "?speech": ["hello", "world", "and", "goodbye"],
     }
+
 
 def test_engine_detects_conflict_with_context():
     """Tests that the engine can detect a conflict between two rules when a third rule provides the logical link."""
@@ -540,3 +555,30 @@ def test_engine_detects_conflict_with_context():
         )
         is True
     )
+
+
+def test_inference_chain_is_pure():
+    """Tests that the new _run_inference_chain function is pure and correct."""
+    rule1 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a man"]),
+        consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+    )
+    rule2 = Rule(
+        condition=Condition(verb="is", terms=["?x", "mortal"]),
+        consequences=[Statement(verb="needs", terms=["?x", "to eat"])],
+    )
+    initial_statements = {Statement(verb="is", terms=["Socrates", "a man"])}
+    rules = [rule1, rule2]
+
+    derived_facts, applications = BeliefSystem._run_inference_chain(
+        initial_statements, rules
+    )
+
+    expected_facts = {
+        Statement(verb="is", terms=["Socrates", "mortal"]),
+        Statement(verb="needs", terms=["Socrates", "to eat"]),
+    }
+
+    assert set(derived_facts) == expected_facts
+    assert len(applications) == 2
+

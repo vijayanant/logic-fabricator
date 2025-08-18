@@ -372,6 +372,37 @@ class BeliefSystem:
             "append": op_append,
         }
 
+    @staticmethod
+    def _run_inference_chain(initial_statements: set, rules: list[Rule]):
+        """Runs the inference loop in a pure, stateless way, returning all successful applications."""
+        known_facts = set(initial_statements)
+        final_applications = []
+        processed_application_keys = set()
+
+        while True:
+            newly_inferred_this_pass = set()
+            for rule in rules:
+                bindings = rule.applies_to(list(known_facts))
+                if bindings is not None:
+                    application_key = (rule, frozenset(bindings.items()))
+                    if application_key not in processed_application_keys:
+                        processed_application_keys.add(application_key)
+                        final_applications.append((rule, bindings))
+                        for consequence in rule.consequences:
+                            if isinstance(consequence, Statement):
+                                inferred_statement = Rule._resolve_statement_from_template(
+                                    consequence, bindings
+                                )
+                                if inferred_statement not in known_facts:
+                                    newly_inferred_this_pass.add(inferred_statement)
+
+            if not newly_inferred_this_pass:
+                break
+            known_facts.update(newly_inferred_this_pass)
+
+        derived_facts = known_facts - initial_statements
+        return list(derived_facts), final_applications
+
     def fork(self, statements: set[Statement]) -> "BeliefSystem":
         forked_system = BeliefSystem(
             rules=list(self.rules),
@@ -461,34 +492,25 @@ class BeliefSystem:
                 self.world_state[key] = operation_func(current_value, value)
 
     def _perform_inference(self):
-        applied_rules_set = set()
-        derived_facts_in_this_run = set()
-        while True:
-            newly_inferred_this_pass = set()
-            for rule in self.rules:
-                bindings = rule.applies_to(list(self.statements))
-                if bindings is not None:
-                    for consequence in rule.consequences:
-                        if isinstance(consequence, Statement):
-                            inferred_statement = Rule._resolve_statement_from_template(
-                                consequence, bindings
-                            )
-                            if inferred_statement not in self.statements:
-                                if not self.add_statement(inferred_statement):
-                                    raise InferredContradiction(inferred_statement)
-                                newly_inferred_this_pass.add(inferred_statement)
-                                applied_rules_set.add(rule)
-                        elif isinstance(consequence, Effect):
-                            effect_key = (rule, frozenset(bindings.items()))
-                            if effect_key not in self.effects_applied:
-                                self._execute_effect(consequence, bindings)
-                                applied_rules_set.add(rule)
-                                self.effects_applied.add(effect_key)
+        derived_facts, applications = BeliefSystem._run_inference_chain(
+            self.statements, self.rules
+        )
 
-            if not newly_inferred_this_pass:
-                break
-            derived_facts_in_this_run.update(newly_inferred_this_pass)
-        return list(derived_facts_in_this_run), list(applied_rules_set)
+        for inferred_statement in derived_facts:
+            if not self.add_statement(inferred_statement):
+                raise InferredContradiction(inferred_statement)
+
+        applied_rules_set = set()
+        for rule, bindings in applications:
+            applied_rules_set.add(rule)
+            for consequence in rule.consequences:
+                if isinstance(consequence, Effect):
+                    effect_key = (rule, frozenset(bindings.items()))
+                    if effect_key not in self.effects_applied:
+                        self._execute_effect(consequence, bindings)
+                        self.effects_applied.add(effect_key)
+
+        return derived_facts, list(applied_rules_set)
 
     def simulate(self, new_statements_to_process: list["Statement"]):
         for fork in self.forks:
@@ -571,4 +593,3 @@ class SimulationRecord:
                 self.forked_belief_system,
             )
         )
-
