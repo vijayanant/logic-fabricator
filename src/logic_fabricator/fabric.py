@@ -275,12 +275,13 @@ class ContradictionEngine:
             verb=rule_b.condition.verb, terms=hypothetical_terms
         )
 
-        # Simulate the context rules with this hypothetical statement
-        temp_belief_system = BeliefSystem(rules=context_rules, contradiction_engine=self)
-        sim_result = temp_belief_system.simulate([hypothetical_statement])
+        # Run the pure inference chain to see what can be derived from the hypothetical statement.
+        derived_facts, _ = BeliefSystem._run_inference_chain(
+            {hypothetical_statement}, context_rules
+        )
 
         # Combine initial and derived facts for checking rule applicability
-        all_facts = sim_result.derived_facts + [hypothetical_statement]
+        all_facts = derived_facts + [hypothetical_statement]
 
         # Check if both rules apply to the resulting state
         bindings_a = rule_a.applies_to(all_facts)
