@@ -299,8 +299,8 @@ def test_simulation_propagates_to_forks():
     forked_system = sim_result_fork.forked_belief_system
     assert forked_system is not None
     fork_only_rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "bright"]),
-        consequences=[Statement(verb="emits", terms=["?x", "light"])],
+        condition=Condition(verb="is", terms=['?x', "bright"]),
+        consequences=[Statement(verb="emits", terms=['?x', "light"])],
     )
     forked_system.rules.append(fork_only_rule)
     new_statement = Statement(verb="is", terms=["sun", "bright"])
@@ -492,3 +492,21 @@ def test_effects_are_not_re_applied_across_simulations():
     second_statement = Statement(verb="is", terms=["sky", "blue"])
     belief_system.simulate([second_statement])
     assert belief_system.world_state.get("population") == 9, "Effect was re-applied incorrectly!"
+
+def test_rule_matches_based_on_statement_structure():
+    statement = Statement(verb="gives", terms=["Alice", "the book", "to", "Bob"])
+    condition = Condition(verb="gives", terms=["?x", "?y", "to", "?z"])
+    rule = Rule(condition=condition, consequences=[])
+    bindings = rule.applies_to([statement])
+    assert bindings == {"?x": "Alice", "?y": "the book", "?z": "Bob"}
+
+def test_rule_matches_with_wildcard_term():
+    statement = Statement(verb="says", terms=["Alice", "hello", "world", "and", "goodbye"])
+    # The condition looks for a speaker and captures the rest of the terms as their speech.
+    condition = Condition(verb="says", terms=["?speaker", "*speech"])
+    rule = Rule(condition=condition, consequences=[])
+    bindings = rule.applies_to([statement])
+    assert bindings == {
+        "?speaker": "Alice",
+        "?speech": ["hello", "world", "and", "goodbye"],
+    }

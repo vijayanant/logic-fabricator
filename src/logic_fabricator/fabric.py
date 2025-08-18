@@ -97,18 +97,36 @@ class Condition:
         if not verb_matches:
             return None
 
-        if len(statement.terms) < len(self.terms):
+        bindings = {}
+        num_cond_terms = len(self.terms)
+        num_stmt_terms = len(statement.terms)
+
+        for i in range(num_cond_terms):
+            cond_term = self.terms[i]
+
+            # Handle wildcard on the last term
+            if cond_term.startswith("*") and i == num_cond_terms - 1:
+                if num_stmt_terms < i:  # Not enough terms to even reach the wildcard
+                    return None
+                binding_key = "?" + cond_term[1:]
+                bindings[binding_key] = statement.terms[i:]
+                return bindings  # Wildcard is always last, so we are done.
+
+            # This part runs for non-wildcard terms
+            if i >= num_stmt_terms:  # Not enough statement terms to match the condition
+                return None
+
+            stmt_term = statement.terms[i]
+            if cond_term.startswith("?"):
+                bindings[cond_term] = stmt_term
+            elif cond_term != stmt_term:
+                return None
+
+        # If the loop completes, all condition terms matched. If the statement is longer,
+        # that's permissible as per test_rule_applies_with_fewer_condition_terms.
+        if num_stmt_terms < num_cond_terms:
             return None
 
-        bindings = {}
-        for i in range(len(self.terms)):
-            cond_term = self.terms[i]
-            stmt_term = statement.terms[i]
-
-            if cond_term.startswith("?"):  # It's a variable
-                bindings[cond_term] = stmt_term
-            elif cond_term != stmt_term:  # Mismatch for literal terms
-                return None
         return bindings
 
     def _find_consistent_bindings(
