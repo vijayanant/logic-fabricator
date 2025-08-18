@@ -581,4 +581,3 @@ def test_inference_chain_is_pure():
 
     assert set(derived_facts) == expected_facts
     assert len(applications) == 2
-

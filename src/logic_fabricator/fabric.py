@@ -296,7 +296,9 @@ class ContradictionEngine:
                 for con_b in rule_b.consequences:
                     if not isinstance(con_b, Statement):
                         continue
-                    resolved_b = Rule._resolve_statement_from_template(con_b, bindings_b)
+                    resolved_b = Rule._resolve_statement_from_template(
+                        con_b, bindings_b
+                    )
                     if self.detect(resolved_a, resolved_b):
                         return True
         return False
@@ -391,8 +393,10 @@ class BeliefSystem:
                         final_applications.append((rule, bindings))
                         for consequence in rule.consequences:
                             if isinstance(consequence, Statement):
-                                inferred_statement = Rule._resolve_statement_from_template(
-                                    consequence, bindings
+                                inferred_statement = (
+                                    Rule._resolve_statement_from_template(
+                                        consequence, bindings
+                                    )
                                 )
                                 if inferred_statement not in known_facts:
                                     newly_inferred_this_pass.add(inferred_statement)
@@ -594,3 +598,4 @@ class SimulationRecord:
                 self.forked_belief_system,
             )
         )
+
