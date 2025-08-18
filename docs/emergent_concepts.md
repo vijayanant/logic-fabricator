@@ -47,7 +47,7 @@ Implementing the `ContradictionEngine` made us aware of its reactive nature, whi
 
 -   **The Concept:** "Logical Tension" refers to latent or potential contradictions that exist within a set of rules, even before any statements are introduced. For example, a system containing both "All birds can fly" and "Penguins are birds that cannot fly" has a high degree of logical tension.
 -   **The Emergence:** Realizing our current engine only detects contradictions *after* they are triggered by a statement made us think about the conflicts that lie dormant within the rules themselves.
+-   **Current Status:** We have implemented a proactive rule conflict detection mechanism that can identify these latent tensions between rules, even when their conditions are different but logically linked by other rules. This is a significant step towards a "static analysis" engine for belief systems.
 -   **Potential Features:**
-    -   A "static analysis" engine for belief systems.
     -   A tool that could scan a rule set and issue warnings like, "Caution: High logical tension detected between Rule 5 and Rule 12. These rules may conflict under certain conditions."
     -   This would empower users to build more robust or, alternatively, more deliberately paradoxical and interesting logic worlds.

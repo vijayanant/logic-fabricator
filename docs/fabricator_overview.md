@@ -20,7 +20,7 @@ Think: statements that define how your logic world works. Written in natural lan
 - "Doubt fractures belief."
 - "Contradictions don’t invalidate, they mutate."
 
-These get turned into structured logic objects. (Internally: JSON, ASTs, or logic graphs.)
+These get turned into structured logic objects. The engine now supports advanced pattern matching, including multi-variable and wildcard matching.
 
 ### 2. **Statements**
 
@@ -43,6 +43,8 @@ Not failure! Contradictions are *events*. When a contradiction is detected, you 
 - Should the belief system fork?
 - Should one rule override another?
 - Should the contradiction become a story event?
+
+The engine can now proactively detect latent conflicts between rules, not just reactive contradictions from statements.
 
 ### 5. **Scenarios (Simulations)**
 
@@ -148,4 +150,3 @@ This doc is your compass, not a spec. It helps you (and future contributors) und
 If you're building the backend: treat this as your intuition layer. If you're writing docs, UIs, or onboarding: this is your tone. If you're a user... congratulations. You're now a logic fabricator.
 
 > *Go forth and contradict yourself. Just make sure to version it.*
-

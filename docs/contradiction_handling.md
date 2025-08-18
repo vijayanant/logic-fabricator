@@ -70,11 +70,9 @@ All strategies, save for the most dogmatic, result in a new, explorable multiver
 ## 🏗️ Data Representation
 
 ```python
-class Contradiction:
-    statement: Statement
-    conflicting_rules: list[Rule]
-    belief_version: str
-    suggested_resolutions: list[str]  # Optional, LLM filled
+class ContradictionRecord:
+    statement1: Statement
+    statement2: Statement
 ```
 
 These are stored by the MCP for historical tracking.
@@ -105,4 +103,3 @@ These are stored by the MCP for historical tracking.
 - LLM-based contradiction clustering
 
 > \_"Contradictions don’t break the system. They *are* the system."
-

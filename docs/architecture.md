@@ -26,7 +26,7 @@ All while keeping it fun, transparent, and user-driven.
 - User-facing input: natural language.
 - Parsed into structured object: verb modifiers, entities, qualifiers.
 - **Architectural Constraint**: A Rule's consequence is always a `Statement`. A Rule cannot generate another Rule. This is a deliberate design choice to ensure the logic of a belief system is stable and traceable. It prevents self-modifying logic, which would complicate our goal of creating an understandable and auditable reasoning engine.
-- Current status: primitive object holding a text and a basic verb identifier.
+- Current status: now supports advanced pattern matching (multi-variable, wildcard, conjunctive conditions).
 - Goal: grow into a modular, evaluatable logic unit with type annotations.
 
 ### 2. **Statement**
@@ -34,7 +34,6 @@ All while keeping it fun, transparent, and user-driven.
 - Facts or assertions from the user.
 - Example: "Alice trusts Ravi"
 - Parsed into subject / verb / object triples.
-- Evaluated against rules.
 
 ### 3. **BeliefSystem**
 
@@ -89,11 +88,10 @@ graph TD
 ## ⏳ Current Scope (MVP)
 
 - ✅ Parse Rule and Statement into simple objects
-- ✅ Check if Rule applies to Statement (hardcoded logic)
+- ✅ Advanced Rule Matching (multi-variable, wildcard, conjunctive conditions)
 - ✅ Follow TDD for every evolution step
 - ✅ Decoupled Simulation Engine
-- 🚧 Evaluate belief systems (planned)
-- 🚧 Support contradictions and forks
+- ✅ Support contradictions and forks
 - 🚧 Hook in LLM later
 
 ---
@@ -111,31 +109,19 @@ We *are* creating a creative playground for reasoning — with a backbone.
 
 ## 🛣️ Evolution Plan (What Comes Next)
 
-1. **Rule Matching Layer**
+1. **Integrate Rule Conflict Detection**
+   - Integrate the proactive rule conflict detection into the BeliefSystem's rule addition process.
 
-   - Improve how we detect if a statement falls under a rule.
-   - Allow for soft matching (e.g. synonyms, modifiers).
-
-2. **Contradiction Engine**
-
-   - When two rules lead to incompatible conclusions.
-   - User decides to fork, override, or mutate.
-
-3. **Simulation Engine**
-
-   - Process multi-statement narratives.
-   - Accumulate derived facts.
-
-4. **LLM Hooks**
+2. **LLM Hooks**
 
    - Use GPT or others for parsing rule language.
    - Explain simulation results.
 
-5. **MCP Engine**
+3. **MCP Engine**
 
    - Track forks, versions, authorship, and logic lineage.
 
-6. **UI / DSL Layer**
+4. **UI / DSL Layer**
 
    - CLI first, then visual playground.
    - Possibly support a lightweight DSL or natural markup for rules.
@@ -151,4 +137,3 @@ We *are* creating a creative playground for reasoning — with a backbone.
 - Keep edge cases close to the test.
 
 > *"You’re not just writing code. You’re constructing logic space. Be kind to future fabricators."*
-

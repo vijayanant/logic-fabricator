@@ -53,6 +53,15 @@ Unlike traditional parsers, this one embraces ambiguity, negotiates meaning, and
 }
 ```
 
+### Current Capabilities of Structured Logic
+
+Our internal `Statement` and `Condition` objects are more expressive than these simple examples. They support:
+
+- **Statement Negation:** Statements can be explicitly negated (e.g., `is sky blue not`).
+- **Statement Priority:** Statements can carry a priority value, used in contradiction resolution.
+- **Conjunctive Conditions:** Rule conditions can be composed of multiple sub-conditions that must all be met (`AND` logic).
+- **Advanced Pattern Matching:** Rule conditions support multi-variable binding and wildcard matching (as described in `docs/engine_features.md`).
+
 ---
 
 ## ⚙️ Functional Goals
@@ -90,4 +99,3 @@ Unlike traditional parsers, this one embraces ambiguity, negotiates meaning, and
 - Users write rules how *they* think, not how we want them to.
 
 > *"It’s not just parsing. It’s interpretive dance with tokens."*
-

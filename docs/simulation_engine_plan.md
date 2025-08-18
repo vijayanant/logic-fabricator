@@ -92,7 +92,7 @@ Internally, simulation maintains a data structure like:
     },
     "anger_towards": {}
   },
-  "Ravi": {}
+  "Ravi": {} 
 }
 ```
 
@@ -144,7 +144,7 @@ All this is recorded by MCP.
 ## 🛠️ Engine Internals
 
 - Stateless per run, stateful across a scenario
-- Runs as a pure function: `simulate(belief, statements) -> result`
+- The core inference logic is now encapsulated in a pure function (`BeliefSystem._run_inference_chain`).
 - Exposes:
   - `step(statement)`
   - `rewind()`
@@ -173,4 +173,3 @@ Later, we can allow interactive stepping, visual flows, and live “what if?” 
 ---
 
 > *"Simulations aren’t just for games. They're for beliefs, too."*
-

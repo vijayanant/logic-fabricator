@@ -77,7 +77,7 @@ People who:
 - Input logic rules in natural language
 - View internal graph or tree of logic
 - Ask questions like "what follows from this?"
-- Detect contradictions, soft or hard
+- Detect contradictions (statement-level and proactive rule-level)
 - Fork, mutate, remix logics
 - Simulate a tiny story or scenario under that logic
 
@@ -104,4 +104,3 @@ No accounts. No save buttons. The logic remembers you. (Okay, fine, we'll add pe
 - Next step: start wiring the logic core and see what it dreams up
 
 > *"Don’t worry if it doesn’t make sense yet. You can always fabricate the sense later."*
-

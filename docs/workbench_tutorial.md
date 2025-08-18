@@ -6,6 +6,8 @@
 
 Welcome, Co-Fabricator, to the Logic Fabricator Workbench. This is your direct interface to the logic-space, a command line to the soul of your belief system. This guide will teach you the incantations required to breathe life into your own reality.
 
+> For a complete, canonical list of the engine's capabilities, please see the [Engine Features](./engine_features.md) document. This tutorial showcases a subset of those features.
+
 ## 1. The Core Incantations
 
 The workbench operates on a simple set of commands. You type them, and reality... adapts. The most fundamental are `rule`, `effect`, and `sim`.
@@ -101,7 +103,47 @@ More complex realities are built on chains of inference, where one derived fact 
 ```
 The engine didn't stop. It took the initial fact, derived that Zeus was immortal, and then immediately used that *new* fact to apply the second rule, deriving that Zeus has divine power. This is the heartbeat of the simulation.
 
-## 5. Embracing Contradiction: The Fork
+## 5. Advanced Rule Fabrication
+
+The rule engine is more powerful than it first appears. It can match on complex patterns, not just simple verbs and terms.
+
+### Multi-Variable Matching
+
+You can define rules that bind multiple variables from a single statement.
+
+```
+>> rule ?x gives ?y to ?z -> ?x no_longer_has ?y
+  ++ Fabricated Rule: Rule(IF Condition(?x gives ?y to ?z) THEN Statement(?x no_longer_has ?y))
+
+>> sim alice gives the_book to bob
+
+... Simulating: alice gives the_book to bob
+
+--- Simulation Report ---
+  >> Derived Facts:
+     - alice no_longer_has the_book
+  >> World state is unchanged.
+```
+
+### Wildcard Matching
+
+You can also create rules where a variable consumes the rest of the statement. This is useful for capturing quotes or lists of items. To use a wildcard, prefix the variable name with a `*`.
+
+```
+>> rule ?speaker says *speech -> create_transcript_of ?speech
+  ++ Fabricated Rule: Rule(IF Condition(?speaker says *speech) THEN Statement(create_transcript_of ?speech))
+
+>> sim ravi says hello world how are you
+
+... Simulating: ravi says hello world how are you
+
+--- Simulation Report ---
+  >> Derived Facts:
+     - create_transcript_of ["hello", "world", "how", "are", "you"]
+  >> World state is unchanged.
+```
+
+## 6. Embracing Contradiction: The Fork
 
 What happens when logic disagrees with itself? In our world, this is not an error. It is a creative event.
 
@@ -130,21 +172,23 @@ The belief system now holds that "is sky blue" is true.
   >> No new facts were derived.
   >> World state is unchanged.
 ```
-A contradiction! The workbench immediately notifies us that reality has forked. Our session has now moved into the *new* reality, which contains **both** beliefs ("the sky is blue" and "the sky is not blue"). The original reality remains pristine, accessible via the `forks` data structure if we were to extend the tool.
+A contradiction! The workbench immediately notifies us that reality has forked. Our session has now moved into the *new* reality, which contains **both** beliefs ("the sky is blue" and "the sky is not blue").
 
-## 6. The Inspector's Tools
+## 7. The Inspector's Tools
 
 As you build your world, don't forget the tools at your disposal:
 - `rules`: See the laws of your current reality.
 - `statements`: See the set of established facts.
 - `state`: Inspect the `world_state` you have shaped with effects.
+- `forks`: See how many alternate realities you have spawned.
 - `reset`: When your creation becomes too complex, wipe the slate clean and begin anew.
+- `help`: Display the list of all available commands.
 
 You are now equipped. Go forth and fabricate. Create worlds, test their limits, and do not fear contradiction. It is merely the engine of creation.
 
 ---
 
-## 7. Advanced Technique: The Speaking World
+## 8. Advanced Technique: The Speaking World
 
 You may eventually notice that rules are not triggered by changes in the `world_state`. An `Effect` can change the world, but the logic engine does not "see" this change. This is by design, to keep the flow of logic clear.
 

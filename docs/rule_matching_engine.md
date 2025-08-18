@@ -60,7 +60,14 @@ Statement(subject="Alice", verb="trusts", object="Ravi")
 ✅ Match
 ```
 
-### 🔜 Phase 2: Synonym & Semantic Matching
+### ✅ Phase 2: Advanced Pattern Matching
+
+The engine can match rules based on the entire structure of a statement, including multiple variables and wildcards that consume the rest of the statement.
+
+- **Multi-variable:** A condition like `?x gives ?y to ?z` will correctly bind the three variables.
+- **Wildcard:** A condition like `?speaker says *speech` will bind `?speaker` to the first term and `?speech` to a list of all remaining terms.
+
+### 🔜 Phase 3: Synonym & Semantic Matching
 
 - Use LLM or WordNet to allow near-match of verbs
 - Map "respects", "has faith in", "believes" to "trusts"
@@ -71,12 +78,12 @@ Statement(verb="respects")
 ✅ Match (via synonym set)
 ```
 
-### 🔮 Phase 3: Modifier Weighting
+### 🔮 Phase 4: Modifier Weighting
 
 - Statement modifiers (like intensity) are checked against rule modifiers
 - Allows rules like "If someone strongly trusts someone..."
 
-### 🧠 Phase 4: Embedding Distance (LLM Assisted)
+### 🧠 Phase 5: Embedding Distance (LLM Assisted)
 
 - Generate sentence embeddings for both Rule and Statement
 - Match if cosine similarity > threshold
@@ -117,4 +124,3 @@ But for early development, we’ll stub this logic.
 - Grow complexity one test at a time
 
 > *"If a rule fires in a belief system, and nobody explains why... did it really apply?"*
-

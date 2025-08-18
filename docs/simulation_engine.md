@@ -25,11 +25,10 @@ Think of it as a turn-based logic interpreter — like running a story through a
 1. **Input Statement** (natural language)
 2. **Structure Statement** (LLM or parser)
 3. **Run Inference Loop**:
-    - Get rules and statements from the `BeliefSystem`.
-    - Apply rules to find consequences (`Statements` and `Effects`).
-    - Apply the `Effects` to its `WorldState`.
-    - Add the new `Statements` back to the `BeliefSystem`'s state.
-    - Loop until no new consequences are generated.
+    - The core inference logic is now handled by the pure `BeliefSystem._run_inference_chain` static method.
+    - This method applies rules to find consequences (`Statements` and `Effects`).
+    - The `BeliefSystem` then processes these consequences, applying `Effects` to its `WorldState` and adding new `Statements` to its state.
+    - The loop continues until no new consequences are generated.
 4. **Check for Contradictions**
    - If found: pause, fork, or escalate
 5. **Record All Activity** in MCP
@@ -122,7 +121,7 @@ This lets us:
 For the MVP:
 
 - One statement at a time
-- Simple rule matching (verb == verb)
+- Rule matching now supports advanced patterns (multi-variable, wildcard, conjunctive conditions).
 - One belief system only
 - Contradictions result in immediate forks (or errors)
 
@@ -167,4 +166,3 @@ Input: "Ravi trusts Alice"
 4. Later: batch simulation, branching scenarios, and user-facing visual logs
 
 > *"The future doesn’t unfold. It’s simulated."*
-

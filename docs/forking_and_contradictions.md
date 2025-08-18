@@ -74,6 +74,7 @@ Forks can be triggered:
 
 - When two rules or beliefs directly contradict
 - When simulation hits a logic deadlock
+- When a latent conflict between rules is detected (proactive rule conflict detection)
 
 ### ✋ Manually
 
@@ -149,4 +150,3 @@ You’re not solving for truth — you’re fabricating meaning.
 > *"Contradictions don’t kill logic. They help it evolve."*
 
 Go ahead. Split your beliefs. Fork your world. And simulate the consequences.
-

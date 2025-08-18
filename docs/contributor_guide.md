@@ -43,12 +43,9 @@ Thanks to volume mounts in `docker-compose.yml`, there's no need to rebuild afte
 logic-fabricator/
 ├── src/
 │   └── logic_fabricator/
-│       ├── rule.py
-│       ├── statement.py
-│       ├── belief_system.py
-│       └── ...
+│       └── fabric.py  # All core logic classes (Rule, Statement, BeliefSystem, etc.)
 ├── tests/
-│   └── test_rule.py
+│   └── test_fabric.py # All unit and integration tests
 ├── pyproject.toml
 ├── Dockerfile
 ├── docker-compose.yml
@@ -68,11 +65,14 @@ We follow a commit style that’s:
 Example:
 
 ```
-Add first test for Rule.match()
+feat(rules): Fabricate wildcard matching in conditions
 
-- Introduced a test for checking verb matching
-- Added minimal logic to pass test (hardcoded verb)
-- All green, no refactor needed yet
+This commit teaches the rule matching engine to understand wildcards,
+allowing a rule to capture a variable number of terms from a statement.
+
+A condition term prefixed with `*` (e.g., `*speech`) will now match
+all remaining terms in a statement, binding them as a list to the
+corresponding variable (e.g., `?speech`).
 ```
 
 ---
@@ -94,14 +94,14 @@ This isn’t a CRUD app — it’s a logic engine. So when adding functionality,
 
 If you’re new to the project, check these out first:
 
-- `docs/logic_fabricator_brief.md`
-- `docs/architecture.md`
-- `docs/mcp_design.md`
-- `docs/simulation_engine.md`
+- [`docs/logic_fabricator_brief.md`](./docs/logic_fabricator_brief.md)
+- [`docs/architecture.md`](./docs/architecture.md)
+- [`docs/engine_features.md`](./docs/engine_features.md) # New: Comprehensive list of engine capabilities
+- [`docs/mcp_design.md`](./docs/mcp_design.md)
+- [`docs/simulation_engine.md`](./docs/simulation_engine.md)
 
 Then branch out from there. Like the belief systems, this doc world is forkable.
 
 ---
 
 Happy fabricating!
-

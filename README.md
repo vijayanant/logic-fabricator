@@ -18,8 +18,8 @@ This repo follows **strict TDD**, so the codebase evolves slowly and deliberatel
 
 The core logic engine is now functional. It currently supports:
 
--   **Structured Logic:** Defining `Rules` and `Statements` with conditions and consequences.
--   **Contradiction Detection:** Identifying and handling direct contradictions between statements.
+-   **Advanced Rule Matching:** Defining `Rules` with complex patterns. The engine can match statements based on their structure, including multiple variables (`?x gives ?y to ?z`) and wildcards (`?speaker says *speech`).
+-   **Multi-Level Contradiction Detection:** The system identifies and handles direct contradictions between statements, and can also proactively detect latent conflicts between the rules themselves based on their logical implications.
 -   **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
 -   **World State Effects:** The ability for rules to have `Effects` that directly modify a key-value `world_state`, allowing simulations to track and change state over time.
 -   **Traceability:** The results of a simulation include a record of which rules were applied to reach the conclusion.
