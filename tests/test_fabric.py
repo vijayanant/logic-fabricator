@@ -581,3 +581,43 @@ def test_inference_chain_is_pure():
 
     assert set(derived_facts) == expected_facts
     assert len(applications) == 2
+
+from logic_fabricator.fabric import BeliefSystem, Rule, Statement, Condition, Effect, ContradictionRecord
+
+def test_belief_system_detects_and_records_latent_conflict_on_rule_add():
+    # Initialize BeliefSystem
+    # Define rules that will create a latent conflict
+    # Rule 1: If ?x is a bird, then ?x can fly
+    rule1 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a", "bird"]),
+        consequences=[Statement(verb="can", terms=["?x", "fly"])]
+    )
+
+    # Rule 2: If ?x is a penguin, then ?x cannot fly
+    rule2 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a", "penguin"]),
+        consequences=[Statement(verb="can", terms=["?x", "fly"], negated=True)]
+    )
+
+    # Context Rule: If ?x is a penguin, then ?x is a bird
+    # This rule creates the latent conflict when added
+    context_rule = Rule(
+        condition=Condition(verb="is", terms=["?x", "a", "penguin"]),
+        consequences=[Statement(verb="is", terms=["?x", "a", "bird"])]
+    )
+
+    bs = BeliefSystem(
+        rules=[rule1, rule2, context_rule],
+        contradiction_engine=ContradictionEngine()
+    )
+
+    # Assert that a latent contradiction record was created
+    # We expect one record for the conflict between rule1 and rule2, linked by context_rule
+    assert len(bs._latent_contradictions) == 1
+    record = bs._latent_contradictions[0]
+    assert isinstance(record, ContradictionRecord)
+    assert record.rule_a == rule1
+    assert record.rule_b == rule2
+    assert record.statement1 is None # No statement-level contradiction here
+    assert record.statement2 is None # No statement-level contradiction here
+    assert "latent conflict" in record.resolution.lower()

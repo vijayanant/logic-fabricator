@@ -314,19 +314,41 @@ class ContradictionEngine:
 
 
 class ContradictionRecord:
-    def __init__(self, statement1: Statement, statement2: Statement):
+    def __init__(
+        self,
+        statement1: Optional[Statement] = None,
+        statement2: Optional[Statement] = None,
+        rule_a: Optional[Rule] = None,
+        rule_b: Optional[Rule] = None,
+        resolution: str = "Undetermined",
+    ):
         self.statement1 = statement1
         self.statement2 = statement2
+        self.rule_a = rule_a
+        self.rule_b = rule_b
+        self.resolution = resolution
 
     def __eq__(self, other):
         if not isinstance(other, ContradictionRecord):
             return NotImplemented
         return (
-            self.statement1 == other.statement1 and self.statement2 == other.statement2
+            self.statement1 == other.statement1
+            and self.statement2 == other.statement2
+            and self.rule_a == other.rule_a
+            and self.rule_b == other.rule_b
+            and self.resolution == other.resolution
         )
 
     def __hash__(self):
-        return hash((self.statement1, self.statement2))
+        return hash(
+            (
+                self.statement1,
+                self.statement2,
+                self.rule_a,
+                self.rule_b,
+                self.resolution,
+            )
+        )
 
 
 class InferredContradiction(Exception):
@@ -374,6 +396,23 @@ class BeliefSystem:
             "decrement": op_decrement,
             "append": op_append,
         }
+        self._latent_contradictions = []  # Initialize here
+
+        # Detect latent conflicts among the initial set of rules
+        for i, rule_a in enumerate(self.rules):
+            for j, rule_b in enumerate(self.rules):
+                if i >= j:  # Avoid duplicate checks and self-comparison
+                    continue
+                if self.contradiction_engine.detect_rule_conflict(
+                    rule_a, rule_b, self.rules
+                ):
+                    self._latent_contradictions.append(
+                        ContradictionRecord(
+                            rule_a=rule_a,
+                            rule_b=rule_b,
+                            resolution="Latent conflict detected on initialization",
+                        )
+                    )
 
     @staticmethod
     def _run_inference_chain(initial_statements: set, rules: list[Rule]):
@@ -598,4 +637,3 @@ class SimulationRecord:
                 self.forked_belief_system,
             )
         )
-
