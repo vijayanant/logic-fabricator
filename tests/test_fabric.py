@@ -621,3 +621,4 @@ def test_belief_system_detects_and_records_latent_conflict_on_rule_add():
     assert record.statement1 is None # No statement-level contradiction here
     assert record.statement2 is None # No statement-level contradiction here
     assert "latent conflict" in record.resolution.lower()
+    assert record.type == "rule_latent" # Assert the type

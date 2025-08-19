@@ -321,12 +321,14 @@ class ContradictionRecord:
         rule_a: Optional[Rule] = None,
         rule_b: Optional[Rule] = None,
         resolution: str = "Undetermined",
+        type: str = "statement" # New field
     ):
         self.statement1 = statement1
         self.statement2 = statement2
         self.rule_a = rule_a
         self.rule_b = rule_b
         self.resolution = resolution
+        self.type = type # Assign new field
 
     def __eq__(self, other):
         if not isinstance(other, ContradictionRecord):
@@ -337,6 +339,7 @@ class ContradictionRecord:
             and self.rule_a == other.rule_a
             and self.rule_b == other.rule_b
             and self.resolution == other.resolution
+            and self.type == other.type # Include new field in comparison
         )
 
     def __hash__(self):
@@ -347,6 +350,7 @@ class ContradictionRecord:
                 self.rule_a,
                 self.rule_b,
                 self.resolution,
+                self.type # Include new field in hash
             )
         )
 
@@ -411,6 +415,7 @@ class BeliefSystem:
                             rule_a=rule_a,
                             rule_b=rule_b,
                             resolution="Latent conflict detected on initialization",
+                            type="rule_latent"
                         )
                     )
 
@@ -463,7 +468,11 @@ class BeliefSystem:
         for existing_statement in self.statements:
             if self.contradiction_engine.detect(new_statement, existing_statement):
                 self.contradictions.append(
-                    ContradictionRecord(new_statement, existing_statement)
+                    ContradictionRecord(
+                        statement1=new_statement,
+                        statement2=existing_statement,
+                        type="statement"
+                    )
                 )
                 is_contradictory = True
                 break
