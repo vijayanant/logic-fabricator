@@ -109,19 +109,16 @@ We *are* creating a creative playground for reasoning — with a backbone.
 
 ## 🛣️ Evolution Plan (What Comes Next)
 
-1. **Integrate Rule Conflict Detection**
-   - Integrate the proactive rule conflict detection into the BeliefSystem's rule addition process.
-
-2. **LLM Hooks**
+1. **LLM Hooks**
 
    - Use GPT or others for parsing rule language.
    - Explain simulation results.
 
-3. **MCP Engine**
+2. **MCP Engine**
 
    - Track forks, versions, authorship, and logic lineage.
 
-4. **UI / DSL Layer**
+3. **UI / DSL Layer**
 
    - CLI first, then visual playground.
    - Possibly support a lightweight DSL or natural markup for rules.

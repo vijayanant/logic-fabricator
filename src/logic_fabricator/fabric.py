@@ -400,9 +400,10 @@ class BeliefSystem:
             "decrement": op_decrement,
             "append": op_append,
         }
-        self._latent_contradictions = []  # Initialize here
+        self._latent_contradictions = self._detect_initial_latent_conflicts()
 
-        # Detect latent conflicts among the initial set of rules
+    def _detect_initial_latent_conflicts(self) -> list[ContradictionRecord]:
+        latent_contradictions = []
         for i, rule_a in enumerate(self.rules):
             for j, rule_b in enumerate(self.rules):
                 if i >= j:  # Avoid duplicate checks and self-comparison
@@ -410,14 +411,15 @@ class BeliefSystem:
                 if self.contradiction_engine.detect_rule_conflict(
                     rule_a, rule_b, self.rules
                 ):
-                    self._latent_contradictions.append(
+                    latent_contradictions.append(
                         ContradictionRecord(
                             rule_a=rule_a,
                             rule_b=rule_b,
                             resolution="Latent conflict detected on initialization",
-                            type="rule_latent"
+                            type="rule_latent",
                         )
                     )
+        return latent_contradictions
 
     @staticmethod
     def _run_inference_chain(initial_statements: set, rules: list[Rule]):

@@ -33,7 +33,7 @@ The detection of contradictions can be performed at several levels:
 The engine now has the capability to proactively detect latent conflicts between rules, even when their conditions are not identical. This allows the system to identify "Logical Tension" before a specific statement ever triggers a direct contradiction.
 
 -   **Context-Aware Detection:** The engine can be given a set of context rules to find implied conflicts. For example, it can detect a conflict between `is ?x a bird -> can ?x fly` and `is ?x a penguin -> can ?x fly not` if it is also given a third rule, `is ?x a penguin -> is ?x a bird`, which provides the necessary link.
--   **On Insertion (Future):** The next step is to integrate this capability into the `BeliefSystem` itself, so that these checks can be performed automatically when a new rule is added.
+-   **On Initialization:** This capability is integrated into the `BeliefSystem`'s initialization. When a `BeliefSystem` is created, it automatically checks for latent conflicts among the provided rules and records them.
 -   **Conflict Records:** Detected rule conflicts can be stored as records, allowing the system to be aware of its own internal tensions.
 
 ### 2. **Evaluation Mismatch**
