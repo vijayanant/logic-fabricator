@@ -6,7 +6,7 @@ authors = [{ name = "Vijay Anant", email = "vijay.hassan@gmail.com" }]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
-dependencies = []
+
 
 [project.urls]
 "Homepage" = "https://github.com/vijayanant/logic-fabricator"
@@ -17,6 +17,11 @@ logic-fabricator = "logic_fabricator.workbench:main"
 
 [tool.poetry]
 packages = [{ include = "logic_fabricator", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+requests = "^2.32.3"
+openai = ">=1.0.0,<2.0.0"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

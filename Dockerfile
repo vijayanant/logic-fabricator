@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y curl && \
 ENV POETRY_VIRTUALENVS_CREATE=false
 
 # Copy files required for installation
-COPY pyproject.toml poetry.lock README.md ./
+COPY pyproject.toml README.md ./
 COPY src/ src/
 
 # Install all dependencies AND the project itself
