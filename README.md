@@ -18,12 +18,12 @@ This repo follows **strict TDD**, so the codebase evolves slowly and deliberatel
 
 The core logic engine is now functional. It currently supports:
 
--   **Advanced Rule Matching:** Defining `Rules` with complex patterns. The engine can match statements based on their structure, including multiple variables (`?x gives ?y to ?z`) and wildcards (`?speaker says *speech`).
--   **Multi-Level Contradiction Detection:** The system identifies and handles direct contradictions between statements, and can also proactively detect latent conflicts between the rules themselves based on their logical implications.
--   **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
--   **World State Effects:** The ability for rules to have `Effects` that directly modify a key-value `world_state`, allowing simulations to track and change state over time.
--   **Traceability:** The results of a simulation include a record of which rules were applied to reach the conclusion.
--   **Contradiction Forking:** When a contradiction is detected, the system can create a new, divergent belief system (a "fork") to explore alternative logical realities.
+- **Advanced Rule Matching:** Defining `Rules` with complex patterns. The engine can match statements based on their structure, including multiple variables (`?x gives ?y to ?z`) and wildcards (`?speaker says *speech`).
+- **Multi-Level Contradiction Detection:** The system identifies and handles direct contradictions between statements, and can also proactively detect latent conflicts between the rules themselves based on their logical implications.
+- **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
+- **World State Effects:** The ability for rules to have `Effects` that directly modify a key-value `world_state`, allowing simulations to track and change state over time.
+- **Traceability:** The results of a simulation include a record of which rules were applied to reach the conclusion.
+- **Contradiction Forking:** When a contradiction is detected, the system can create a new, divergent belief system (a "fork") to explore alternative logical realities.
 
 ---
 
@@ -45,25 +45,38 @@ We use:
 
 ## 🚀 Usage
 
-There are three primary commands you will use, all executed via the `Makefile`.
+Getting started involves four steps. The first step is the most important, as the application will not start without a valid configuration.
 
-### 1. Build the Environment
+### 1. Configure Your Environment
 
-This command builds the Docker image that contains the full environment and all dependencies. You only need to run this once to get started.
+The project requires you to configure your LLM provider settings. All configuration is handled via environment variables, which are loaded from a `.env` file for local development.
+
+First, copy the example template:
+
+```bash
+cp .env.example .env
+```
+
+Next, edit the `.env` to provide the values for your specific LLM setup. The file contains examples for both local Ollama and OpenAI.
+Don't worry, the .env file is already in `.gitignore'.
+
+### 2. Build the Docker Environment
+
+This command builds the Docker image that contains the full environment and all dependencies. You only need to run this once after the initial setup or when dependencies change.
 
 ```bash
 make build
 ```
 
-### 2. Run the Tests
+### 3. Run the Tests (Optional but Recommended)
 
-To ensure the logical integrity of the engine, run the test suite.
+To ensure the logical integrity of the engine and verify your configuration, run the test suite.
 
 ```bash
 make test
 ```
 
-### 3. Launch the Workbench
+### 4. Launch the Workbench
 
 This is the main event. This command starts the interactive REPL, allowing you to fabricate and explore your own belief systems.
 
