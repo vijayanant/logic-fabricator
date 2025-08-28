@@ -75,8 +75,16 @@ make run
 
 ## 🦪 Philosophy
 
+A useful metaphor for this project comes from *Tron: Legacy*. The ISOs were emergent, unpredictable beings in a perfectly structured grid. The system's rigid administrator, CLU, saw them as imperfections and sought to purge them.
+
+**Logic Fabricator is an attempt to build a system that does the opposite.**
+
+We believe the most interesting, creative, and powerful logic often comes from ambiguity and contradiction—the very things a "perfect" system would reject. Our goal is not to build a flawless grid, but to create a playground that embraces its ISOs, treating them as features, not bugs.
+
+This leads to a few core tenets:
+
 - **Tests drive design** — nothing exists until a test proves the need for it
-- **Forks are first-class** — contradictions aren't errors, they're decision points
+- **Forks are first-class** — contradictions aren't errors, they're creative events
 - **Logic is clay** — mutable, forkable, explorable
 - **Belief systems are software** — and you're the reasoner-in-chief
 
