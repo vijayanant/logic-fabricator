@@ -1,18 +1,18 @@
 import json
 from openai import OpenAI
 from .fabric import Rule, Condition, Statement
+from .config import load_config
 
 
 class LLMParser:
     """A class to parse natural language into structured logic using an LLM."""
 
-    def __init__(
-        self, base_url="http://host.docker.internal:11434/v1", api_key="ollama"
-    ):
-        """Initializes the parser to connect to a local LLM server."""
+    def __init__(self):
+        """Initializes the parser using settings from the configuration."""
+        self.config = load_config()
         self.client = OpenAI(
-            base_url=base_url,
-            api_key=api_key,  # required, but unused for local Ollama
+            base_url=self.config.llm_base_url,
+            api_key=self.config.llm_api_key,
         )
 
     def parse_rule(self, text: str) -> Rule | None:
@@ -32,7 +32,7 @@ class LLMParser:
 
         try:
             response = self.client.chat.completions.create(
-                model="llama3.1",
+                model=self.config.llm_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": text},

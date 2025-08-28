@@ -9,6 +9,7 @@ build/
 # Virtualenvs
 .env/
 .venv/
+.env
 
 # Poetry lock (optional if you want full reproducibility)
 # poetry.lock
