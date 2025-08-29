@@ -20,7 +20,7 @@ class Statement:
 
     def __repr__(self):
         neg_str = "NOT " if self.negated else ""
-        return f"Statement({neg_str}{self.verb} {' '.join(self.terms)})"
+        return f"({neg_str}{self.verb} {' '.join(self.terms)})"
 
     def __eq__(self, other):
         if not isinstance(other, Statement):
@@ -59,9 +59,9 @@ class Condition:
 
     def __repr__(self):
         if self.and_conditions:
-            return f"Condition(AND: {' & '.join(map(repr, self.and_conditions))})"
+            return f"({' & '.join(map(repr, self.and_conditions))})"
         else:
-            return f"Condition({self.verb} {' '.join(self.terms)})"
+            return f"({self.verb} {' '.join(self.terms)})"
 
     def __eq__(self, other):
         if not isinstance(other, Condition):
@@ -189,7 +189,7 @@ class Effect:
 
     def __repr__(self):
         return (
-            f"Effect({self.operation} {self.target}.{self.attribute} to {self.value})"
+            f"Effect: {self.operation} {self.target}.{self.attribute} to {self.value}"
         )
 
     def __eq__(self, other):
@@ -213,7 +213,7 @@ class Rule:
 
     def __repr__(self):
         return (
-            f"Rule(IF {self.condition} THEN {', '.join(map(repr, self.consequences))})"
+            f"Rule: IF {self.condition} THEN {', '.join(map(repr, self.consequences))}"
         )
 
     def __eq__(self, other):
