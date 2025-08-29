@@ -65,20 +65,33 @@ All while keeping it fun, transparent, and user-driven.
   - Simulation results tied to belief versions
 - Think of this as Git meets cognitive memory.
 
+### 7. **Intermediate Representation (IR) & Translator**
+
+To decouple the creative, non-deterministic output of the LLM from the core logic engine, we use an Intermediate Representation.
+- **IR Objects:** Simple, structured data classes (`IRRule`, `IRStatement`) that represent the *intent* of the user's natural language, as parsed by the LLM.
+- **Translator:** A deterministic component that translates the IR objects into the concrete `Rule`, `Statement`, and `Effect` objects that the `Simulation Engine` uses.
+
+This two-step process allows us to change LLM providers or parsing strategies without having to refactor the core logic engine.
+
 ---
 
 ## 🧭 Architectural Flow
 
 ```mermaid
 graph TD
-    A[User: natural rule or statement]
-    A --> B[LLM: parse & structure]
-    B --> C{BeliefSystem}
-    C --> D[Simulation Engine]
-    D --> E{WorldState}
-    D --> F[LLM: explain outcome]
-    F --> G[User]
-    D --> H[MCP: store logic history]
+    subgraph "Input Processing"
+        A[User: 'rule' or 'sim' text] --> B(LLM Parser);
+        B --> C(Intermediate Representation);
+        C --> D(IR Translator);
+    end
+
+    subgraph "Logic Core"
+        D -- as Rule --> E{BeliefSystem};
+        D -- as Statement --> F[Simulation Engine];
+        E -- provides rules to --> F;
+        F --> G[WorldState];
+        F --> H[MCP];
+    end
 ```
 
 **Note on Flow**: The diagram shows that the `Simulation Engine` produces a `WorldState`. It is a core principle that this is a one-way flow. The engine's rule evaluation is driven by `Statements` within the `BeliefSystem`, not by changes in the `WorldState`. This ensures a clear and traceable line of logical inference.
@@ -92,7 +105,7 @@ graph TD
 - ✅ Follow TDD for every evolution step
 - ✅ Decoupled Simulation Engine
 - ✅ Support contradictions and forks
-- 🚧 Hook in LLM later
+- ✅ Hook in LLM for workbench parsing
 
 ---
 

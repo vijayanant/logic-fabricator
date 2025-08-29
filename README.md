@@ -18,6 +18,7 @@ This repo follows **strict TDD**, so the codebase evolves slowly and deliberatel
 
 The core logic engine is now functional. It currently supports:
 
+- **Natural Language Workbench:** An interactive REPL where rules and statements are provided in plain English, parsed by an LLM into structured logic.
 - **Advanced Rule Matching:** Defining `Rules` with complex patterns. The engine can match statements based on their structure, including multiple variables (`?x gives ?y to ?z`) and wildcards (`?speaker says *speech`).
 - **Multi-Level Contradiction Detection:** The system identifies and handles direct contradictions between statements, and can also proactively detect latent conflicts between the rules themselves based on their logical implications.
 - **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
@@ -58,7 +59,7 @@ cp .env.example .env
 ```
 
 Next, edit the `.env` to provide the values for your specific LLM setup. The file contains examples for both local Ollama and OpenAI.
-Don't worry, the .env file is already in `.gitignore'.
+Don't worry, the .env file is already in `.gitignore`.
 
 ### 2. Build the Docker Environment
 
@@ -82,6 +83,34 @@ This is the main event. This command starts the interactive REPL, allowing you t
 
 ```bash
 make run
+```
+
+### Example Workbench Session
+
+Once inside the workbench (`make run`), you can fabricate your own reality. Here's an example that shows inference chaining (a derived fact) and a world state effect.
+
+```
+>> rule if ?x is a man then ?x is mortal
+
+++ Fabricated Rule: Rule: IF (?x is a man) THEN ((is ?x mortal))
+
+>> rule if ?x is mortal then increment mortal_count by 1
+
+++ Fabricated Rule: Rule: IF (?x is mortal) THEN (Effect: increment world_state.mortal_count to 1)
+
+>> sim socrates is a man
+
+... Simulating: is socrates a man
+
+--- Simulation Report ---
+  >> Derived Facts:
+     - (is socrates mortal)
+  >> World State Changes:
+     - mortal_count: None -> 1
+
+>> state
+--- World State ---
+  mortal_count: 1
 ```
 
 ---
@@ -112,19 +141,6 @@ If you're curious about the internals, read the following first:
 - [`forking_and_contradictions.md`](./docs/forking_and_contradictions.md)
 
 Contributions welcome! But keep it chill, weird, and test-driven.
-
----
-
-## 🧙‍♂️ What Is This Even?
-
-Imagine Prolog had a baby with GPT and raised it on contradiction therapy. That’s what this is.
-
-```python
-fabricate("trust fractures when lies propagate")
-simulate("Bob lied. Alice trusted Bob.")
-```
-
-Boom. A logic engine with a personality.
 
 ---
 
