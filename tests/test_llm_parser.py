@@ -1,6 +1,8 @@
+import pytest
 from logic_fabricator.llm_parser import LLMParser
 from logic_fabricator.ir.ir_types import IRRule, IRCondition, IRStatement, IREffect
 
+@pytest.mark.llm
 def test_parses_simple_rule_to_ir():
     """Tests that the LLMParser can convert a simple natural language rule into its Intermediate Representation (IR) object."""
     
@@ -21,6 +23,7 @@ def test_parses_simple_rule_to_ir():
     # The assertion that proves our success
     assert parsed_ir_rule == expected_ir_rule
 
+@pytest.mark.llm
 def test_parse_simple_trust_rule_to_ir():
     """Tests that the LLMParser can parse a simple trust rule into its Intermediate Representation (IR) object."""
     natural_language_rule = "If Alice trusts Bob, then Bob is trustworthy."
@@ -52,6 +55,7 @@ def test_parse_simple_trust_rule_to_ir():
 
     assert parsed_ir_rule == expected_ir_rule
 
+@pytest.mark.llm
 def test_parse_effect_rule_to_ir():
     """Tests that the LLMParser can parse an effect rule into its Intermediate Representation (IR) object."""
     natural_language_rule = "If ?x is mortal, then increment population by 1"
@@ -81,6 +85,7 @@ def test_parse_effect_rule_to_ir():
 
     assert parsed_ir_rule == expected_ir_rule
 
+@pytest.mark.llm
 def test_parse_simple_statement_to_ir():
     """Tests that the LLMParser can parse a simple statement into its Intermediate Representation (IR) object."""
     natural_language_input = "Alice trusts Bob."

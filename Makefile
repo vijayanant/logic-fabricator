@@ -10,6 +10,9 @@ build:
 	docker build -t $(IMAGE_NAME):$(VERSION) $(PROJECT_DIR)
 
 test:
+	docker run --rm -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run pytest -m "not llm"
+
+test-all:
 	docker run --rm -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run pytest
 
 run:

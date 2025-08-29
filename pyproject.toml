@@ -26,6 +26,7 @@ python-dotenv = "^1.0.0"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+markers = "llm: marks tests as requiring LLM calls (slow)"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
