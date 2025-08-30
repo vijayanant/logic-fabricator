@@ -1,3 +1,5 @@
+[![Build and Test](https://github.com/vijayanant/logic-fabricator/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/vijayanant/logic-fabricator/actions/workflows/ci.yml)
+
 # 🧠 Logic Fabricator
 
 > *"Everything makes sense once you fabricate the rules."*
