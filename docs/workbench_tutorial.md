@@ -37,19 +37,24 @@ The engine took our initial fact (`sim`), applied our rule, and **inferred a new
 
 ## 2. The Art of Consequence: Chaining & Effects
 
-Derived facts are good, but sometimes logic must *change* the world. This is the purpose of `Effects`. Let's build on our previous step to show how a derived fact can trigger an Effect.
+Derived facts are good, but sometimes logic must *change* the world. A derived fact can even trigger a rule with an `Effect` in the very same simulation.
 
-**Step 1: Fabricate an Effect Rule**
-This rule will be triggered by the *output* of our first rule.
+**Step 1: Fabricate the Rules**
+First, let's `reset` the workbench for a clean slate. Then, we'll fabricate two rules: one that creates a new fact, and a second that will be triggered by that new fact.
 
 ```
+>> reset
+Purging reality. A new belief system is born.
+
+>> rule if ?x is a man then ?x is mortal
+++ Fabricated Rule: Rule: IF (?x is a man) THEN ((is ?x mortal))
+
 >> rule if ?x is mortal then increment mortal_count by 1
 ++ Fabricated Rule: Rule: IF (?x is mortal) THEN (Effect: increment world_state.mortal_count to 1)
 ```
-This rule states that whenever someone is found to be mortal, the `mortal_count` in the `world_state` should be incremented.
 
 **Step 2: Simulate the Chain**
-Let's run the original simulation again. Watch how the engine now chains the rules together.
+Now, when we introduce a single fact, we can see the chain reaction.
 
 ```
 >> sim socrates is a man
@@ -62,7 +67,7 @@ Let's run the original simulation again. Watch how the engine now chains the rul
   >> World State Changes:
      - mortal_count: None -> 1
 ```
-This is **inference chaining** in action. The simulation didn't stop. It took the initial fact, derived that Socrates was mortal, and then immediately used that *new* fact to apply the second rule, which reached out and changed the world.
+This is **inference chaining** in action. The engine took the initial fact (`socrates is a man`), applied the first rule to derive the *new* fact `(is socrates mortal)`, and then immediately used that new fact to apply the second rule, all in one simulation cycle. The "Derived Facts" in the report correctly shows the new statement that was added to the belief system during this simulation.
 
 ## 3. Advanced Fabrication: The Nuances of Rules
 

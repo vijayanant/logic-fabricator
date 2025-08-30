@@ -2,9 +2,14 @@ import json
 import os
 from pathlib import Path
 from openai import OpenAI
-from .config import load_config
-from logic_fabricator.ir.ir_types import IRRule, IRCondition, IRStatement, IREffect
-from typing import Any, List, Optional, Union
+import json
+import structlog  # Added structlog import
+from typing import Union
+from .ir.ir_types import IRRule, IRCondition, IREffect, IRStatement
+from .config import Config, load_config
+
+logger = structlog.get_logger(__name__)  # Added logger instance
+
 
 class LLMParser:
     """A class to parse natural language into structured logic using an LLM."""
@@ -17,7 +22,9 @@ class LLMParser:
             api_key=self.config.llm_api_key,
         )
         # Load the system prompt from file
-        prompt_file_path = Path(__file__).parent / "prompts" / "ir_parser_system_prompt.md"
+        prompt_file_path = (
+            Path(__file__).parent / "prompts" / "ir_parser_system_prompt.md"
+        )
         with open(prompt_file_path, "r") as f:
             self.system_prompt = f.read()
 
@@ -28,8 +35,13 @@ class LLMParser:
             object=data["object"],
             negated=data.get("negated", False),
             modifiers=data.get("modifiers", []),
-            conjunctive_conditions=[self._parse_ir_condition(cc) for cc in data.get("conjunctive_conditions", [])],
-            exceptions=[self._parse_ir_condition(exc) for exc in data.get("exceptions", [])]
+            conjunctive_conditions=[
+                self._parse_ir_condition(cc)
+                for cc in data.get("conjunctive_conditions", [])
+            ],
+            exceptions=[
+                self._parse_ir_condition(exc) for exc in data.get("exceptions", [])
+            ],
         )
 
     def _parse_ir_statement(self, data: dict) -> IRStatement:
@@ -38,14 +50,14 @@ class LLMParser:
             verb=data["verb"],
             object=data["object"],
             negated=data.get("negated", False),
-            modifiers=data.get("modifiers", [])
+            modifiers=data.get("modifiers", []),
         )
 
     def _parse_ir_effect(self, data: dict) -> IREffect:
         return IREffect(
             target_world_state_key=data["target_world_state_key"],
             effect_operation=data["effect_operation"],
-            effect_value=data["effect_value"]
+            effect_value=data["effect_value"],
         )
 
     def parse_natural_language(self, text: str) -> Union[IRRule, IRStatement, None]:
@@ -79,7 +91,5 @@ class LLMParser:
                 raise ValueError(f"Unknown input type: {input_type}")
 
         except Exception as e:
-            print(f"[LLMParser Error]: An error occurred while parsing the input: {e}")
+            logger.error("LLM parsing error", error=str(e))
             return None
-
-

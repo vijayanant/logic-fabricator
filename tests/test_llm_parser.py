@@ -102,3 +102,21 @@ def test_parse_simple_statement_to_ir():
     parsed_ir_object = parser.parse_natural_language(natural_language_input)
 
     assert parsed_ir_object == expected_ir_statement
+
+@pytest.mark.llm
+def test_parse_statement_with_wildcard_to_ir():
+    """Tests that the LLMParser can parse a natural language statement with a wildcard into its IR object."""
+    natural_language_input = "ravi says hello world how are you"
+
+    expected_ir_statement = IRStatement(
+        subject="ravi",
+        verb="says",
+        object=["hello", "world", "how", "are", "you"], # Wildcard terms should be a list
+        negated=False,
+        modifiers=[]
+    )
+
+    parser = LLMParser()
+    parsed_ir_object = parser.parse_natural_language(natural_language_input)
+
+    assert parsed_ir_object == expected_ir_statement

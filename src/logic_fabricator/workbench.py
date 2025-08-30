@@ -1,9 +1,8 @@
+import structlog
+from .config import configure_logging  # Import the logging configuration function
 from .fabric import (
     BeliefSystem,
-    Condition,
     ContradictionEngine,
-    Effect,
-    Rule,
     Statement,
 )
 from .llm_parser import LLMParser
@@ -12,10 +11,14 @@ from .ir.ir_types import IRRule, IRStatement
 from .exceptions import UnsupportedIRFeatureError
 from typing import Union
 
+# Get a structlog logger instance for this module
+logger = structlog.get_logger(__name__)
+
 # Global instances for handlers (will be passed to handlers)
 _belief_system: BeliefSystem = None
 _llm_parser: LLMParser = None
 _ir_translator: IRTranslator = None
+
 
 def print_welcome():
     """Prints the welcome message and help text."""
@@ -42,6 +45,7 @@ def print_help():
     print("  help                               (Show this help message)")
     print("  exit                               (Leave the workbench)")
 
+
 def handle_rule_command(raw_input_text: str):
     global _belief_system
     if not raw_input_text:
@@ -52,18 +56,21 @@ def handle_rule_command(raw_input_text: str):
         if not ir_object:
             print("  !! Error: Could not parse the rule. LLM returned empty.")
             return
-        
+
         if isinstance(ir_object, IRRule):
             new_rule = _ir_translator.translate_ir_rule(ir_object)
             _belief_system.rules.append(new_rule)
             print(f"  ++ Fabricated Rule: {new_rule}")
         else:
-            print(f"  !! Error: Expected a rule, but LLM parsed a {type(ir_object).__name__}. Please provide a rule in 'if ... then ...' format.")
+            print(
+                f"  !! Error: Expected a rule, but LLM parsed a {type(ir_object).__name__}. Please provide a rule in 'if ... then ...' format."
+            )
 
     except UnsupportedIRFeatureError as e:
         print(f"  !! Feature not supported: {e}")
     except Exception as e:
         print(f"  !! Error fabricating rule: {e}")
+
 
 def handle_effect_command(raw_input_text: str):
     global _belief_system
@@ -75,18 +82,21 @@ def handle_effect_command(raw_input_text: str):
         if not ir_object:
             print("  !! Error: Could not parse the effect rule. LLM returned empty.")
             return
-        
+
         if isinstance(ir_object, IRRule) and ir_object.rule_type == "effect":
             new_rule = _ir_translator.translate_ir_rule(ir_object)
             _belief_system.rules.append(new_rule)
             print(f"  ++ Fabricated Effect Rule: {new_rule}")
         else:
-            print(f"  !! Error: Expected an effect rule, but LLM parsed a {type(ir_object).__name__} or a non-effect rule. Please provide an effect rule in 'if ... then ...' format.")
+            print(
+                f"  !! Error: Expected an effect rule, but LLM parsed a {type(ir_object).__name__} or a non-effect rule. Please provide an effect rule in 'if ... then ...' format."
+            )
 
     except UnsupportedIRFeatureError as e:
         print(f"  !! Feature not supported: {e}")
     except Exception as e:
         print(f"  !! Error fabricating effect rule: {e}")
+
 
 def handle_sim_command(raw_input_text: str):
     global _belief_system
@@ -98,13 +108,15 @@ def handle_sim_command(raw_input_text: str):
         if not ir_object:
             print("  !! Error: Could not parse the statement. LLM returned empty.")
             return
-        
+
         if isinstance(ir_object, Statement):
-            statement = ir_object # LLMParser can return Statement directly if it's a simple statement
+            statement = ir_object  # LLMParser can return Statement directly if it's a simple statement
         elif isinstance(ir_object, IRStatement):
             statement = _ir_translator.translate_ir_statement(ir_object)
         else:
-            print(f"  !! Error: Expected a statement, but LLM parsed a {type(ir_object).__name__}. Please provide a simple statement.")
+            print(
+                f"  !! Error: Expected a statement, but LLM parsed a {type(ir_object).__name__}. Please provide a simple statement."
+            )
             return
 
         print(
@@ -148,6 +160,7 @@ def handle_sim_command(raw_input_text: str):
     except Exception as e:
         print(f"  !! Error simulating: {e}")
 
+
 def handle_state_command():
     print("--- World State ---")
     if not _belief_system.world_state:
@@ -156,31 +169,31 @@ def handle_state_command():
         for k, v in _belief_system.world_state.items():
             print(f"  {k}: {v}")
 
+
 def handle_rules_command():
     print("--- Active Rules ---")
     if not _belief_system.rules:
         print("(none)")
     else:
         for i, rule in enumerate(_belief_system.rules):
-            print(
-                f"  {i + 1}: {rule}" 
-            )  # Relies on a __str__ or __repr__ for Rule
+            print(f"  {i + 1}: {rule}")  # Relies on a __str__ or __repr__ for Rule
+
 
 def handle_statements_command():
     print("--- Current Facts ---")
     if not _belief_system.statements:
         print("(none)")
     else:
-        for stmt in sorted(
-            list(_belief_system.statements), key=lambda s: s.verb
-        ):
+        for stmt in sorted(list(_belief_system.statements), key=lambda s: s.verb):
             print(
                 f"  - {'NOT ' if stmt.negated else ''}{stmt.verb} {' '.join(stmt.terms)}"
             )
 
+
 def handle_forks_command():
-    print(f"--- Forks ---")
+    print("--- Forks ---")
     print(f"This reality has forked {len(_belief_system.forks)} time(s).")
+
 
 def handle_reset_command():
     global _belief_system, _llm_parser, _ir_translator
@@ -188,14 +201,21 @@ def handle_reset_command():
     _belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     _llm_parser = LLMParser()
     _ir_translator = IRTranslator()
-    return _belief_system # Return the new belief system for main to update
+    return _belief_system  # Return the new belief system for main to update
+
 
 def handle_exit_command():
     print("Exiting workbench.")
     exit()
 
+
 def main():
     global _belief_system, _llm_parser, _ir_translator
+    configure_logging()  # Configure structlog at the start of main
+    logger.info(
+        "Workbench starting up.", initial_message="Welcome to Logic Fabricator!"
+    )  # Example log message
+
     _belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     _llm_parser = LLMParser()
     _ir_translator = IRTranslator()
@@ -222,7 +242,9 @@ def main():
             if not user_input:
                 continue
 
-            parts = user_input.split(maxsplit=1) # Split only on first space to get command and rest of input
+            parts = user_input.split(
+                maxsplit=1
+            )  # Split only on first space to get command and rest of input
             command = parts[0].lower()
             raw_input_text = parts[1] if len(parts) > 1 else ""
 
@@ -237,16 +259,20 @@ def main():
                     # Commands that take raw_input_text
                     command_handlers[command](raw_input_text)
             else:
-                print(f"  !! Unknown command: '{command}'. Type 'help' for a list of commands.")
+                print(
+                    f"  !! Unknown command: '{command}'. Type 'help' for a list of commands."
+                )
 
         except KeyboardInterrupt:
             print("\nExiting workbench.")
             break
         except Exception as e:
+            logger.error(
+                "A critical error occurred in workbench", exc_info=True
+            )  # Log the exception
             print(f"\n  !! A critical error occurred: {e}")
             print("  !! The fabric of reality may be unstable.")
 
 
 if __name__ == "__main__":
     main()
-
