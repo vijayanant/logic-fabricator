@@ -10,13 +10,13 @@ build:
 	docker build -t $(IMAGE_NAME):$(VERSION) $(PROJECT_DIR)
 
 test:
-	docker-compose run --rm app poetry run pytest -m "not llm"
+	docker-compose --profile test run --rm test poetry run pytest -m "not llm"
 
 test-all:
-	docker-compose run --rm app poetry run pytest
+	docker-compose --profile test run --rm test poetry run pytest
 
 run:
-	docker-compose run --rm app poetry run logic-fabricator
+	docker-compose --profile dev run --rm dev poetry run logic-fabricator
 
 tag-dev:
 	docker tag $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):dev
@@ -37,6 +37,6 @@ clean:
 	docker rmi $(IMAGE_NAME):$(VERSION) || true
 
 shell:
-	docker-compose run --rm app /bin/bash
+	docker-compose --profile dev run --rm dev /bin/bash
 
 rebuild: clean build
