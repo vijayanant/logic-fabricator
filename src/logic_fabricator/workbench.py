@@ -41,6 +41,7 @@ def print_help():
     print("  rules                              (List all active rules)")
     print("  statements                         (List all current facts)")
     print("  forks                              (Show the number of forked realities)")
+    print("  history                            (Show the simulation history)")
     print("  reset                              (Start with a fresh belief system)")
     print("  help                               (Show this help message)")
     print("  exit                               (Leave the workbench)")
@@ -195,6 +196,16 @@ def handle_forks_command():
     print(f"This reality has forked {len(_belief_system.forks)} time(s).")
 
 
+def handle_history_command():
+    print("--- History ---")
+    history = _belief_system.get_history()
+    if not history:
+        print("(empty)")
+    else:
+        for i, record in enumerate(history):
+            print(f"  {i + 1}: {repr(record)}")
+
+
 def handle_reset_command():
     global _belief_system, _llm_parser, _ir_translator
     print("Purging reality. A new belief system is born.")
@@ -228,6 +239,7 @@ def main():
         "rules": handle_rules_command,
         "statements": handle_statements_command,
         "forks": handle_forks_command,
+        "history": handle_history_command,
         "reset": handle_reset_command,
         "help": print_help,
         "exit": handle_exit_command,
@@ -252,7 +264,7 @@ def main():
                 if command in ["reset", "exit", "quit"]:
                     # These commands handle their own global state or exit
                     command_handlers[command]()
-                elif command in ["state", "rules", "statements", "forks", "help"]:
+                elif command in ["state", "rules", "statements", "forks", "help", "history"]:
                     # These commands don't take raw_input_text
                     command_handlers[command]()
                 else:
