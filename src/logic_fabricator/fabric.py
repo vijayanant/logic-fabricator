@@ -1,8 +1,9 @@
 import enum
-import structlog # Added structlog import
+import json
+import structlog
 from typing import Optional
 
-logger = structlog.get_logger(__name__) # Added logger instance
+logger = structlog.get_logger(__name__)
 
 
 class ForkingStrategy(enum.Enum):
@@ -42,6 +43,14 @@ class Statement:
     def __hash__(self):
         return hash((self.verb, tuple(self.terms), self.negated, self.priority))
 
+    def to_dict(self):
+        return {
+            "verb": self.verb,
+            "terms": self.terms,
+            "negated": self.negated,
+            "priority": self.priority,
+        }
+
 
 class Condition:
     def __init__(
@@ -51,7 +60,7 @@ class Condition:
         and_conditions: list["Condition"] = None,
         verb_synonyms: list[str] = None,
     ):
-        self.and_conditions = and_conditions  # Initialize here
+        self.and_conditions = and_conditions
         self.verb_synonyms = verb_synonyms or []
         if and_conditions is not None:
             self.verb = None  # Not applicable for conjunctive conditions
@@ -103,13 +112,31 @@ class Condition:
             )
         )
 
+    def to_dict(self):
+        if self.and_conditions:
+            # This assumes that sub-conditions also have a to_dict method.
+            return {"and_conditions": [c.to_dict() for c in self.and_conditions]}
+        else:
+            return {
+                "verb": self.verb,
+                "terms": self.terms,
+                "verb_synonyms": self.verb_synonyms,
+            }
+
     def _match_single_condition(self, statement: "Statement") -> dict | None:
-        logger.debug("Attempting to match single condition", condition=self, statement=statement)
+        logger.debug(
+            "Attempting to match single condition", condition=self, statement=statement
+        )
         verb_matches = (
             self.verb == statement.verb or statement.verb in self.verb_synonyms
         )
         if not verb_matches:
-            logger.debug("Verb mismatch", condition_verb=self.verb, statement_verb=statement.verb, synonyms=self.verb_synonyms)
+            logger.debug(
+                "Verb mismatch",
+                condition_verb=self.verb,
+                statement_verb=statement.verb,
+                synonyms=self.verb_synonyms,
+            )
             return None
 
         bindings = {}
@@ -122,16 +149,29 @@ class Condition:
             # Handle wildcard on the last term
             if cond_term.startswith("*") and i == num_cond_terms - 1:
                 if num_stmt_terms < i:  # Not enough terms to even reach the wildcard
-                    logger.debug("Wildcard match failed: not enough statement terms", condition=self, statement=statement)
+                    logger.debug(
+                        "Wildcard match failed: not enough statement terms",
+                        condition=self,
+                        statement=statement,
+                    )
                     return None
                 binding_key = "?" + cond_term[1:]
                 bindings[binding_key] = statement.terms[i:]
-                logger.debug("Wildcard matched", condition=self, statement=statement, bindings=bindings)
+                logger.debug(
+                    "Wildcard matched",
+                    condition=self,
+                    statement=statement,
+                    bindings=bindings,
+                )
                 return bindings  # Wildcard is always last, so we are done.
 
             # This part runs for non-wildcard terms
             if i >= num_stmt_terms:  # Not enough statement terms to match the condition
-                logger.debug("Term mismatch: not enough statement terms", condition=self, statement=statement)
+                logger.debug(
+                    "Term mismatch: not enough statement terms",
+                    condition=self,
+                    statement=statement,
+                )
                 return None
 
             stmt_term = statement.terms[i]
@@ -139,16 +179,29 @@ class Condition:
                 bindings[cond_term] = stmt_term
                 logger.debug("Variable bound", var=cond_term, value=stmt_term)
             elif cond_term != stmt_term:
-                logger.debug("Literal term mismatch", expected=cond_term, actual=stmt_term)
+                logger.debug(
+                    "Literal term mismatch", expected=cond_term, actual=stmt_term
+                )
                 return None
 
         # If the loop completes, all condition terms matched. If the statement is longer,
         # that's permissible as per test_rule_applies_with_fewer_condition_terms.
-        if num_stmt_terms < num_cond_terms: # This check seems redundant given the loop logic, but keeping for consistency
-            logger.debug("Statement shorter than condition terms after loop", condition=self, statement=statement)
+        if (
+            num_stmt_terms < num_cond_terms
+        ):  # This check seems redundant given the loop logic, but keeping for consistency
+            logger.debug(
+                "Statement shorter than condition terms after loop",
+                condition=self,
+                statement=statement,
+            )
             return None
 
-        logger.debug("Single condition matched", condition=self, statement=statement, bindings=bindings)
+        logger.debug(
+            "Single condition matched",
+            condition=self,
+            statement=statement,
+            bindings=bindings,
+        )
         return bindings
 
     def _find_consistent_bindings(
@@ -157,9 +210,17 @@ class Condition:
         available_statements: list["Statement"],
         current_bindings: dict,
     ) -> dict | None:
-        logger.debug("Attempting to find consistent bindings", sub_conditions_count=len(sub_conditions_to_match), available_statements_count=len(available_statements), current_bindings=current_bindings)
+        logger.debug(
+            "Attempting to find consistent bindings",
+            sub_conditions_count=len(sub_conditions_to_match),
+            available_statements_count=len(available_statements),
+            current_bindings=current_bindings,
+        )
         if not sub_conditions_to_match:
-            logger.debug("All sub-conditions matched, returning bindings", final_bindings=current_bindings)
+            logger.debug(
+                "All sub-conditions matched, returning bindings",
+                final_bindings=current_bindings,
+            )
             return (
                 current_bindings  # All sub-conditions matched, return combined bindings
             )
@@ -168,22 +229,31 @@ class Condition:
         remaining_sub_conditions = sub_conditions_to_match[1:]
 
         for i, stmt in enumerate(available_statements):
-            logger.debug("Trying statement for sub-condition", sub_condition=sub_condition, statement=stmt)
-            sub_bindings = sub_condition._match_single_condition(
-                stmt
-            )  # Use the new helper
+            logger.debug(
+                "Trying statement for sub-condition",
+                sub_condition=sub_condition,
+                statement=stmt,
+            )
+            sub_bindings = sub_condition._match_single_condition(stmt)
             if sub_bindings is not None:
                 new_bindings = current_bindings.copy()
                 conflict = False
                 for key, value in sub_bindings.items():
                     if key in new_bindings and new_bindings[key] != value:
-                        logger.debug("Binding conflict detected", key=key, existing_value=new_bindings[key], new_value=value)
+                        logger.debug(
+                            "Binding conflict detected",
+                            key=key,
+                            existing_value=new_bindings[key],
+                            new_value=value,
+                        )
                         conflict = True
                         break
                     new_bindings[key] = value
 
                 if not conflict:
-                    logger.debug("No binding conflict, recursing", new_bindings=new_bindings)
+                    logger.debug(
+                        "No binding conflict, recursing", new_bindings=new_bindings
+                    )
                     next_available_statements = (
                         available_statements[:i] + available_statements[i + 1 :]
                     )
@@ -193,18 +263,28 @@ class Condition:
                         new_bindings,
                     )
                     if result is not None:
-                        logger.debug("Consistent bindings found in recursion", result=result)
+                        logger.debug(
+                            "Consistent bindings found in recursion", result=result
+                        )
                         return result
         logger.debug("No consistent bindings found for current path")
         return None
 
     def matches(self, statements: list["Statement"]) -> dict | None:
-        logger.debug("Attempting to match condition", condition=self, statements_count=len(statements))
+        logger.debug(
+            "Attempting to match condition",
+            condition=self,
+            statements_count=len(statements),
+        )
         if self.and_conditions is not None:
-            logger.debug("Matching conjunctive condition", and_conditions=self.and_conditions)
+            logger.debug(
+                "Matching conjunctive condition", and_conditions=self.and_conditions
+            )
             result = self._find_consistent_bindings(self.and_conditions, statements, {})
             if result is not None:
-                logger.debug("Conjunctive condition matched", condition=self, bindings=result)
+                logger.debug(
+                    "Conjunctive condition matched", condition=self, bindings=result
+                )
             else:
                 logger.debug("Conjunctive condition did not match", condition=self)
             return result
@@ -213,7 +293,12 @@ class Condition:
             for statement in statements:
                 bindings = self._match_single_condition(statement)
                 if bindings is not None:
-                    logger.debug("Simple condition matched", condition=self, statement=statement, bindings=bindings)
+                    logger.debug(
+                        "Simple condition matched",
+                        condition=self,
+                        statement=statement,
+                        bindings=bindings,
+                    )
                     return bindings
             logger.debug("Simple condition did not match any statement", condition=self)
             return None  # No match found for any statement
@@ -232,9 +317,7 @@ class Effect:
         )
 
     def __repr__(self):
-        return (
-            f"Effect(op={self.operation}, target={self.target}.{self.attribute}, val={self.value})"
-        )
+        return f"Effect(op={self.operation}, target={self.target}.{self.attribute}, val={self.value})"
 
     def __eq__(self, other):
         if not isinstance(other, Effect):
@@ -261,7 +344,6 @@ class Rule:
         )
 
     def __repr__(self):
-        # Concise representation for logging
         consequences_repr = ", ".join([repr(c) for c in self.consequences])
         return f"Rule(IF {repr(self.condition)} THEN [{consequences_repr}])"
 
@@ -276,8 +358,16 @@ class Rule:
     def __hash__(self):
         return hash((self.condition, tuple(self.consequences)))
 
+    def to_dict(self):
+        return {
+            "condition": self.condition.to_dict(),
+            "consequences": [c.to_dict() for c in self.consequences],
+        }
+
     def applies_to(self, statements: list["Statement"]) -> dict | None:
-        logger.debug("Checking if rule applies", rule=self, statements_count=len(statements))
+        logger.debug(
+            "Checking if rule applies", rule=self, statements_count=len(statements)
+        )
         bindings = self.condition.matches(statements)
         if bindings is not None:
             logger.debug("Rule applies", rule=self, bindings=bindings)
@@ -289,13 +379,21 @@ class Rule:
     def _resolve_statement_from_template(
         template_statement: Statement, bindings: dict
     ) -> Statement:
-        logger.debug("Resolving statement from template", template=template_statement, bindings=bindings)
+        logger.debug(
+            "Resolving statement from template",
+            template=template_statement,
+            bindings=bindings,
+        )
         new_terms = []
         for term in template_statement.terms:
             if isinstance(term, str) and term.startswith("?"):
                 resolved_term = bindings.get(term, term)
                 new_terms.append(resolved_term)
-                logger.debug("Resolved variable in statement template", var=term, resolved_value=resolved_term)
+                logger.debug(
+                    "Resolved variable in statement template",
+                    var=term,
+                    resolved_value=resolved_term,
+                )
             else:
                 new_terms.append(term)
         resolved_statement = Statement(
@@ -304,18 +402,24 @@ class Rule:
             negated=template_statement.negated,
             priority=template_statement.priority,
         )
-        logger.debug("Statement resolved from template", resolved_statement=resolved_statement)
+        logger.debug(
+            "Statement resolved from template", resolved_statement=resolved_statement
+        )
         return resolved_statement
 
 
 class ContradictionEngine:
     def detect(self, s1: Statement, s2: Statement) -> bool:
-        logger.debug("Detecting contradiction between statements", statement1=s1, statement2=s2)
+        logger.debug(
+            "Detecting contradiction between statements", statement1=s1, statement2=s2
+        )
         if s1.verb == s2.verb and s1.terms == s2.terms and s1.negated != s2.negated:
             logger.info("Contradiction detected", statement1=s1, statement2=s2)
             return True
 
-        logger.debug("No contradiction detected between statements", statement1=s1, statement2=s2)
+        logger.debug(
+            "No contradiction detected between statements", statement1=s1, statement2=s2
+        )
         return False
 
     def _check_one_way_conflict(
@@ -345,7 +449,9 @@ class ContradictionEngine:
         derived_facts, _ = BeliefSystem._run_inference_chain(
             {hypothetical_statement}, context_rules
         )
-        logger.debug("Derived facts from hypothetical statement", derived_facts=derived_facts)
+        logger.debug(
+            "Derived facts from hypothetical statement", derived_facts=derived_facts
+        )
 
         # Combine initial and derived facts for checking rule applicability
         all_facts = derived_facts + [hypothetical_statement]
@@ -354,28 +460,52 @@ class ContradictionEngine:
         # Check if both rules apply to the resulting state
         bindings_a = rule_a.applies_to(all_facts)
         bindings_b = rule_b.applies_to(all_facts)
-        logger.debug("Rule applicability check results", rule_a_applies=bool(bindings_a), rule_b_applies=bool(bindings_b))
+        logger.debug(
+            "Rule applicability check results",
+            rule_a_applies=bool(bindings_a),
+            rule_b_applies=bool(bindings_b),
+        )
 
         if bindings_a and bindings_b:
-            logger.debug("Both rules apply, checking consequences for contradictions", rule_a=rule_a, rule_b=rule_b)
+            logger.debug(
+                "Both rules apply, checking consequences for contradictions",
+                rule_a=rule_a,
+                rule_b=rule_b,
+            )
             # If both apply, check their consequences for contradictions
             for con_a in rule_a.consequences:
                 if not isinstance(con_a, Statement):
-                    logger.debug("Consequence A is not a Statement, skipping", consequence=con_a)
+                    logger.debug(
+                        "Consequence A is not a Statement, skipping", consequence=con_a
+                    )
                     continue
                 resolved_a = Rule._resolve_statement_from_template(con_a, bindings_a)
                 for con_b in rule_b.consequences:
                     if not isinstance(con_b, Statement):
-                        logger.debug("Consequence B is not a Statement, skipping", consequence=con_b)
+                        logger.debug(
+                            "Consequence B is not a Statement, skipping",
+                            consequence=con_b,
+                        )
                         continue
                     resolved_b = Rule._resolve_statement_from_template(
                         con_b, bindings_b
                     )
-                    logger.debug("Checking for contradiction between resolved consequences", resolved_a=resolved_a, resolved_b=resolved_b)
+                    logger.debug(
+                        "Checking for contradiction between resolved consequences",
+                        resolved_a=resolved_a,
+                        resolved_b=resolved_b,
+                    )
                     if self.detect(resolved_a, resolved_b):
-                        logger.info("One-way conflict detected between rules", rule_a=rule_a, rule_b=rule_b, conflicting_statements=[resolved_a, resolved_b])
+                        logger.info(
+                            "One-way conflict detected between rules",
+                            rule_a=rule_a,
+                            rule_b=rule_b,
+                            conflicting_statements=[resolved_a, resolved_b],
+                        )
                         return True
-        logger.debug("No one-way conflict detected for this path", rule_a=rule_a, rule_b=rule_b)
+        logger.debug(
+            "No one-way conflict detected for this path", rule_a=rule_a, rule_b=rule_b
+        )
         return False
 
     def detect_rule_conflict(
@@ -402,14 +532,14 @@ class ContradictionRecord:
         rule_a: Optional[Rule] = None,
         rule_b: Optional[Rule] = None,
         resolution: str = "Undetermined",
-        type: str = "statement" # New field
+        type: str = "statement",
     ):
         self.statement1 = statement1
         self.statement2 = statement2
         self.rule_a = rule_a
         self.rule_b = rule_b
         self.resolution = resolution
-        self.type = type # Assign new field
+        self.type = type  # Assign new field
 
     def __str__(self):
         return (
@@ -433,7 +563,7 @@ class ContradictionRecord:
             and self.rule_a == other.rule_a
             and self.rule_b == other.rule_b
             and self.resolution == other.resolution
-            and self.type == other.type # Include new field in comparison
+            and self.type == other.type
         )
 
     def __hash__(self):
@@ -444,7 +574,7 @@ class ContradictionRecord:
                 self.rule_a,
                 self.rule_b,
                 self.resolution,
-                self.type # Include new field in hash
+                self.type,
             )
         )
 
@@ -473,7 +603,7 @@ def op_append(current_value, new_value):
 
 
 class BeliefSystem:
-    _id_counter = 0 # Class-level counter for unique IDs
+    _id_counter = 0  # Class-level counter for unique IDs
 
     def __init__(
         self,
@@ -482,8 +612,13 @@ class BeliefSystem:
         strategy: ForkingStrategy = ForkingStrategy.COEXIST,
     ):
         BeliefSystem._id_counter += 1
-        self.id = BeliefSystem._id_counter # Assign a unique ID
-        logger.info("Initializing BeliefSystem", belief_system_id=self.id, strategy=strategy, initial_rules_count=len(rules))
+        self.id = BeliefSystem._id_counter
+        logger.info(
+            "Initializing BeliefSystem",
+            belief_system_id=self.id,
+            strategy=strategy,
+            initial_rules_count=len(rules),
+        )
         self.rules = rules
         self.contradiction_engine = contradiction_engine
         self.strategy = strategy
@@ -500,12 +635,18 @@ class BeliefSystem:
             "append": op_append,
         }
         self._latent_contradictions = self._detect_initial_latent_conflicts()
-        logger.debug("BeliefSystem initialized", belief_system_id=self.id, latent_contradictions_count=len(self._latent_contradictions))
+        logger.debug(
+            "BeliefSystem initialized",
+            belief_system_id=self.id,
+            latent_contradictions_count=len(self._latent_contradictions),
+        )
 
     def __repr__(self):
-        return (f"BeliefSystem(id={self.id}, rules_count={len(self.rules)}, "
-                f"statements_count={len(self.statements)}, forks_count={len(self.forks)}, "
-                f"strategy={self.strategy.name})")
+        return (
+            f"BeliefSystem(id={self.id}, rules_count={len(self.rules)}, "
+            f"statements_count={len(self.statements)}, forks_count={len(self.forks)}, "
+            f"strategy={self.strategy.name})"
+        )
 
     def _detect_initial_latent_conflicts(self) -> list[ContradictionRecord]:
         logger.info("Detecting initial latent conflicts among rules.")
@@ -525,12 +666,19 @@ class BeliefSystem:
                     )
                     latent_contradictions.append(record)
                     logger.warning("Latent conflict detected", record=record)
-        logger.info("Finished detecting initial latent conflicts.", count=len(latent_contradictions))
+        logger.info(
+            "Finished detecting initial latent conflicts.",
+            count=len(latent_contradictions),
+        )
         return latent_contradictions
 
     @staticmethod
     def _run_inference_chain(initial_statements: set, rules: list[Rule]):
-        logger.info("Running inference chain", initial_statements_count=len(initial_statements), rules_count=len(rules))
+        logger.info(
+            "Running inference chain",
+            initial_statements_count=len(initial_statements),
+            rules_count=len(rules),
+        )
         """Runs the inference loop in a pure, stateless way, returning all successful applications."""
         known_facts = set(initial_statements)
         final_applications = []
@@ -540,7 +688,11 @@ class BeliefSystem:
         while True:
             inference_pass += 1
             newly_inferred_this_pass = set()
-            logger.debug("Inference pass", pass_number=inference_pass, known_facts_count=len(known_facts))
+            logger.debug(
+                "Inference pass",
+                pass_number=inference_pass,
+                known_facts_count=len(known_facts),
+            )
             for rule in rules:
                 bindings = rule.applies_to(list(known_facts))
                 if bindings is not None:
@@ -548,7 +700,11 @@ class BeliefSystem:
                     if application_key not in processed_application_keys:
                         processed_application_keys.add(application_key)
                         final_applications.append((rule, bindings))
-                        logger.debug("Rule applied in inference chain", rule=rule, bindings=bindings)
+                        logger.debug(
+                            "Rule applied in inference chain",
+                            rule=rule,
+                            bindings=bindings,
+                        )
                         for consequence in rule.consequences:
                             if isinstance(consequence, Statement):
                                 inferred_statement = (
@@ -558,20 +714,38 @@ class BeliefSystem:
                                 )
                                 if inferred_statement not in known_facts:
                                     newly_inferred_this_pass.add(inferred_statement)
-                                    logger.debug("Newly inferred statement", statement=inferred_statement)
+                                    logger.debug(
+                                        "Newly inferred statement",
+                                        statement=inferred_statement,
+                                    )
 
             if not newly_inferred_this_pass:
-                logger.debug("No new facts inferred in this pass, breaking inference chain.")
+                logger.debug(
+                    "No new facts inferred in this pass, breaking inference chain."
+                )
                 break
             known_facts.update(newly_inferred_this_pass)
-            logger.debug("Facts updated after pass", newly_inferred_count=len(newly_inferred_this_pass), total_known_facts=len(known_facts))
+            logger.debug(
+                "Facts updated after pass",
+                newly_inferred_count=len(newly_inferred_this_pass),
+                total_known_facts=len(known_facts),
+            )
 
         derived_facts = known_facts - initial_statements
-        logger.info("Inference chain completed", total_derived_facts=len(derived_facts), total_applications=len(final_applications), total_passes=inference_pass)
+        logger.info(
+            "Inference chain completed",
+            total_derived_facts=len(derived_facts),
+            total_applications=len(final_applications),
+            total_passes=inference_pass,
+        )
         return list(derived_facts), final_applications
 
     def fork(self, statements: set[Statement]) -> "BeliefSystem":
-        logger.info("Forking BeliefSystem", parent_statements_count=len(self.statements), new_statements_count=len(statements))
+        logger.info(
+            "Forking BeliefSystem",
+            parent_statements_count=len(self.statements),
+            new_statements_count=len(statements),
+        )
         forked_system = BeliefSystem(
             rules=list(self.rules),
             contradiction_engine=self.contradiction_engine,
@@ -591,23 +765,31 @@ class BeliefSystem:
                 record = ContradictionRecord(
                     statement1=new_statement,
                     statement2=existing_statement,
-                    type="statement"
+                    type="statement",
                 )
                 self.contradictions.append(record)
-                logger.warning("Contradiction detected when adding statement", record=record)
+                logger.warning(
+                    "Contradiction detected when adding statement", record=record
+                )
                 is_contradictory = True
                 break
         if not is_contradictory:
             self.statements.add(new_statement)
             logger.info("Statement added successfully", statement=new_statement)
         else:
-            logger.info("Statement not added due to contradiction", statement=new_statement)
+            logger.info(
+                "Statement not added due to contradiction", statement=new_statement
+            )
         return not is_contradictory
 
     def _handle_contradiction(
         self, contradictory_statement: Statement
     ) -> Optional["BeliefSystem"]:
-        logger.info("Handling contradiction", contradictory_statement=contradictory_statement, strategy=self.strategy)
+        logger.info(
+            "Handling contradiction",
+            contradictory_statement=contradictory_statement,
+            strategy=self.strategy,
+        )
         if self.strategy == ForkingStrategy.PRESERVE:
             logger.info("Contradiction strategy is PRESERVE, not forking.")
             return None
@@ -637,33 +819,61 @@ class BeliefSystem:
                     priority=old_statement.priority + priority_adjustment,
                 )
                 new_statements.add(modified_statement)
-                logger.debug("Modified statement priority due to strategy", strategy=self.strategy, old_statement=old_statement, modified_statement=modified_statement)
+                logger.debug(
+                    "Modified statement priority due to strategy",
+                    strategy=self.strategy,
+                    old_statement=old_statement,
+                    modified_statement=modified_statement,
+                )
             else:
                 new_statements.add(contradictory_statement)
-                logger.debug("Added contradictory statement with no old statement to prioritize", statement=contradictory_statement)
+                logger.debug(
+                    "Added contradictory statement with no old statement to prioritize",
+                    statement=contradictory_statement,
+                )
         else:  # COEXIST
             new_statements.add(contradictory_statement)
-            logger.debug("Added contradictory statement using COEXIST strategy", statement=contradictory_statement)
+            logger.debug(
+                "Added contradictory statement using COEXIST strategy",
+                statement=contradictory_statement,
+            )
 
         forked_system = self.fork(new_statements)
-        logger.info("BeliefSystem forked due to contradiction", forked_system=forked_system)
+        logger.info(
+            "BeliefSystem forked due to contradiction", forked_system=forked_system
+        )
         return forked_system
 
     def _process_initial_statements(
         self, new_statements_to_process: list["Statement"]
     ) -> Optional["BeliefSystem"]:
-        logger.info("Processing initial statements", statements_count=len(new_statements_to_process))
+        logger.info(
+            "Processing initial statements",
+            statements_count=len(new_statements_to_process),
+        )
         forked_belief_system = None
         for statement_to_add in new_statements_to_process:
             if not self.add_statement(statement_to_add):
-                logger.info("Statement led to contradiction, handling contradiction.", statement=statement_to_add)
+                logger.info(
+                    "Statement led to contradiction, handling contradiction.",
+                    statement=statement_to_add,
+                )
                 forked_belief_system = self._handle_contradiction(statement_to_add)
                 if forked_belief_system:
-                    logger.info("BeliefSystem forked during initial statement processing.", forked_system=forked_belief_system)
+                    logger.info(
+                        "BeliefSystem forked during initial statement processing.",
+                        forked_system=forked_belief_system,
+                    )
                 else:
-                    logger.info("Contradiction handled without forking (e.g., PRESERVE strategy).", statement=statement_to_add)
-                break # Stop processing further statements if a fork occurs
-        logger.info("Finished processing initial statements.", forked_system_created=bool(forked_belief_system))
+                    logger.info(
+                        "Contradiction handled without forking (e.g., PRESERVE strategy).",
+                        statement=statement_to_add,
+                    )
+                break  # Stop processing further statements if a fork occurs
+        logger.info(
+            "Finished processing initial statements.",
+            forked_system_created=bool(forked_belief_system),
+        )
         return forked_belief_system
 
     def _execute_effect(self, effect: Effect, bindings: dict):
@@ -682,7 +892,13 @@ class BeliefSystem:
 
                 current_value = self.world_state.get(key)
                 new_value = operation_func(current_value, value)
-                logger.info("World state change", key=key, old_value=current_value, new_value=new_value, operation=effect.operation)
+                logger.info(
+                    "World state change",
+                    key=key,
+                    old_value=current_value,
+                    new_value=new_value,
+                    operation=effect.operation,
+                )
                 self.world_state[key] = new_value
             else:
                 logger.warning("Unknown effect operation", operation=effect.operation)
@@ -694,12 +910,19 @@ class BeliefSystem:
         derived_facts, applications = BeliefSystem._run_inference_chain(
             self.statements, self.rules
         )
-        logger.debug("Inference chain returned", derived_facts_count=len(derived_facts), applications_count=len(applications))
+        logger.debug(
+            "Inference chain returned",
+            derived_facts_count=len(derived_facts),
+            applications_count=len(applications),
+        )
 
         for inferred_statement in derived_facts:
             logger.debug("Adding inferred statement", statement=inferred_statement)
             if not self.add_statement(inferred_statement):
-                logger.warning("Inferred statement led to contradiction", statement=inferred_statement)
+                logger.warning(
+                    "Inferred statement led to contradiction",
+                    statement=inferred_statement,
+                )
                 raise InferredContradiction(inferred_statement)
 
         applied_rules_set = set()
@@ -709,13 +932,27 @@ class BeliefSystem:
                 if isinstance(consequence, Effect):
                     effect_key = (rule, frozenset(bindings.items()))
                     if effect_key not in self.effects_applied:
-                        logger.debug("Executing effect from applied rule", rule=rule, effect=consequence, bindings=bindings)
+                        logger.debug(
+                            "Executing effect from applied rule",
+                            rule=rule,
+                            effect=consequence,
+                            bindings=bindings,
+                        )
                         self._execute_effect(consequence, bindings)
                         self.effects_applied.add(effect_key)
                     else:
-                        logger.debug("Effect already applied for this rule and bindings, skipping.", rule=rule, effect=consequence, bindings=bindings)
+                        logger.debug(
+                            "Effect already applied for this rule and bindings, skipping.",
+                            rule=rule,
+                            effect=consequence,
+                            bindings=bindings,
+                        )
 
-        logger.info("Inference completed.", total_derived_facts=len(derived_facts), total_applied_rules=len(applied_rules_set))
+        logger.info(
+            "Inference completed.",
+            total_derived_facts=len(derived_facts),
+            total_applied_rules=len(applied_rules_set),
+        )
         return derived_facts, list(applied_rules_set)
 
     def get_history(self):
@@ -723,7 +960,9 @@ class BeliefSystem:
         return self.mcp_records.copy()
 
     def simulate(self, new_statements_to_process: list["Statement"]):
-        logger.info("Starting simulation", new_statements_count=len(new_statements_to_process))
+        logger.info(
+            "Starting simulation", new_statements_count=len(new_statements_to_process)
+        )
         for fork in self.forks:
             logger.debug("Simulating in forked system", fork=fork)
             fork.simulate(new_statements_to_process)
@@ -738,19 +977,32 @@ class BeliefSystem:
         if not forked_belief_system:
             try:
                 derived_facts, applied_rules = self._perform_inference()
-                logger.info("Inference completed without contradiction during simulation.")
+                logger.info(
+                    "Inference completed without contradiction during simulation."
+                )
             except InferredContradiction as e:
-                logger.warning("Inferred contradiction during simulation, handling.", statement=e.statement)
+                logger.warning(
+                    "Inferred contradiction during simulation, handling.",
+                    statement=e.statement,
+                )
                 forked_belief_system = self._handle_contradiction(e.statement)
                 derived_facts = []
                 applied_rules = []
                 if forked_belief_system:
-                    logger.info("BeliefSystem forked due to inferred contradiction.", forked_system=forked_belief_system)
+                    logger.info(
+                        "BeliefSystem forked due to inferred contradiction.",
+                        forked_system=forked_belief_system,
+                    )
                 else:
-                    logger.info("Inferred contradiction handled without forking (e.g., PRESERVE strategy).", statement=e.statement)
+                    logger.info(
+                        "Inferred contradiction handled without forking (e.g., PRESERVE strategy).",
+                        statement=e.statement,
+                    )
             except Exception as e:
-                logger.error("Unexpected error during inference in simulation", exc_info=True)
-                raise # Re-raise the exception after logging
+                logger.error(
+                    "Unexpected error during inference in simulation", exc_info=True
+                )
+                raise  # Re-raise the exception after logging
 
         simulation_result = SimulationResult(
             derived_facts=derived_facts,
@@ -766,8 +1018,24 @@ class BeliefSystem:
                 forked_belief_system=forked_belief_system,
             )
         )
-        logger.info("Simulation completed.", derived_facts_count=len(derived_facts), applied_rules_count=len(applied_rules), forked_system_created=bool(forked_belief_system))
+        logger.info(
+            "Simulation completed.",
+            derived_facts_count=len(derived_facts),
+            applied_rules_count=len(applied_rules),
+            forked_system_created=bool(forked_belief_system),
+        )
         return simulation_result
+
+    def persist(self, driver):
+        """Serializes the BeliefSystem and saves it as a node in Neo4j."""
+        rules_as_dicts = [rule.to_dict() for rule in self.rules]
+
+        with driver.session() as session:
+            session.run(
+                "CREATE (bs:BeliefSystem {id: $id, rules: $rules_json})",
+                id=self.id,
+                rules_json=json.dumps(rules_as_dicts),
+            )
 
 
 class SimulationResult:
@@ -782,15 +1050,25 @@ class SimulationResult:
         self.forked_belief_system = forked_belief_system
 
     def __str__(self):
-        fork_str = f", forked={self.forked_belief_system.id}" if self.forked_belief_system else ""
-        return (f"SimulationResult(derived={len(self.derived_facts)}, "
-                f"applied={len(self.applied_rules)}{fork_str})")
+        fork_str = (
+            f", forked={self.forked_belief_system.id}"
+            if self.forked_belief_system
+            else ""
+        )
+        return (
+            f"SimulationResult(derived={len(self.derived_facts)}, "
+            f"applied={len(self.applied_rules)}{fork_str})"
+        )
 
     def __repr__(self):
-        fork_repr = repr(self.forked_belief_system) if self.forked_belief_system else "None"
-        return (f"SimulationResult(derived_facts={repr(self.derived_facts)}, "
-                f"applied_rules={repr(self.applied_rules)}, "
-                f"forked_belief_system={fork_repr})")
+        fork_repr = (
+            repr(self.forked_belief_system) if self.forked_belief_system else "None"
+        )
+        return (
+            f"SimulationResult(derived_facts={repr(self.derived_facts)}, "
+            f"applied_rules={repr(self.applied_rules)}, "
+            f"forked_belief_system={fork_repr})"
+        )
 
 
 class SimulationRecord:
@@ -807,16 +1085,26 @@ class SimulationRecord:
         self.forked_belief_system = forked_belief_system
 
     def __str__(self):
-        fork_str = f", forked={self.forked_belief_system.id}" if self.forked_belief_system else ""
-        return (f"SimulationRecord(initial={len(self.initial_statements)}, "
-                f"derived={len(self.derived_facts)}, applied={len(self.applied_rules)}{fork_str})")
+        fork_str = (
+            f", forked={self.forked_belief_system.id}"
+            if self.forked_belief_system
+            else ""
+        )
+        return (
+            f"SimulationRecord(initial={len(self.initial_statements)}, "
+            f"derived={len(self.derived_facts)}, applied={len(self.applied_rules)}{fork_str})"
+        )
 
     def __repr__(self):
-        fork_repr = repr(self.forked_belief_system) if self.forked_belief_system else "None"
-        return (f"SimulationRecord(initial_statements={repr(self.initial_statements)}, "
-                f"derived_facts={repr(self.derived_facts)}, "
-                f"applied_rules={repr(self.applied_rules)}, "
-                f"forked_belief_system={fork_repr})")
+        fork_repr = (
+            repr(self.forked_belief_system) if self.forked_belief_system else "None"
+        )
+        return (
+            f"SimulationRecord(initial_statements={repr(self.initial_statements)}, "
+            f"derived_facts={repr(self.derived_facts)}, "
+            f"applied_rules={repr(self.applied_rules)}, "
+            f"forked_belief_system={fork_repr})"
+        )
 
     def __eq__(self, other):
         if not isinstance(other, SimulationRecord):

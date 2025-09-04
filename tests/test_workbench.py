@@ -1,14 +1,29 @@
+
 import io
+import pytest
 from contextlib import redirect_stdout
 
-# Import the functions and global state we need to manipulate
+from logic_fabricator.ir.ir_types import IRStatement
 from logic_fabricator.workbench import (
     handle_reset_command,
     handle_sim_command,
-    handle_history_command, # This import will fail
+    handle_history_command,
 )
 
-def test_history_command_prints_mcp_records():
+@pytest.fixture
+def mock_llm_parser(monkeypatch):
+    """Mocks the LLMParser to avoid real API calls."""
+    def mock_parse(self, text):
+        if "socrates is a man" in text:
+            # Return a predictable IR object for the test simulation
+            return IRStatement(subject="Socrates", verb="is", object="a_man")
+        return None
+
+    monkeypatch.setattr(
+        "logic_fabricator.llm_parser.LLMParser.parse_natural_language", mock_parse
+    )
+
+def test_history_command_prints_mcp_records(mock_llm_parser):
     """
     Tests that the 'history' command function prints MCP records from the belief system.
     """
