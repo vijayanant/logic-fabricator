@@ -718,6 +718,10 @@ class BeliefSystem:
         logger.info("Inference completed.", total_derived_facts=len(derived_facts), total_applied_rules=len(applied_rules_set))
         return derived_facts, list(applied_rules_set)
 
+    def get_history(self):
+        """Returns a copy of the MCP records for this belief system."""
+        return self.mcp_records.copy()
+
     def simulate(self, new_statements_to_process: list["Statement"]):
         logger.info("Starting simulation", new_statements_count=len(new_statements_to_process))
         for fork in self.forks:
