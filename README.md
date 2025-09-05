@@ -43,6 +43,7 @@ We use:
 
 - [Docker](https://docs.docker.com/get-docker/)
 - [Poetry](https://python-poetry.org/docs/#installation)
+- [Neo4j](https://neo4j.com/download/) (Community Edition is sufficient)
 
 ---
 
@@ -52,16 +53,19 @@ Getting started involves four steps. The first step is the most important, as th
 
 ### 1. Configure Your Environment
 
-The project requires you to configure your LLM provider settings. All configuration is handled via environment variables, which are loaded from a `.env` file for local development.
+The project requires you to configure your LLM provider settings. All configuration is handled via environment variables, which are loaded from `.env.dev` for development and `.env.test` for testing.
 
-First, copy the example template:
+First, copy the example templates for both development and testing environments:
 
 ```bash
-cp .env.example .env
+cp .env.dev.example .env.dev
+cp .env.test.example .env.test
 ```
 
-Next, edit the `.env` to provide the values for your specific LLM setup. The file contains examples for both local Ollama and OpenAI.
-Don't worry, the .env file is already in `.gitignore`.
+Next, edit both `.env.dev` and `.env.test` to provide the values for your specific LLM and database setup. The example files contain configurations for local Ollama, OpenAI, and Neo4j.
+(Note: The test environment is configured to clear the database on each run.)
+Don't worry, these `.env` files are already in `.gitignore`.
+
 
 ### 2. Build the Docker Environment
 
@@ -76,7 +80,8 @@ make build
 To ensure the logical integrity of the engine and verify your configuration, run the test suite.
 
 ```bash
-make test
+make test-unit      # Runs unit tests
+make test-integration # Runs integration tests
 ```
 
 ### 4. Launch the Workbench

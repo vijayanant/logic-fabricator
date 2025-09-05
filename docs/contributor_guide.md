@@ -17,9 +17,12 @@ This guide is for human developers, curious agents, and future fabricators. It c
 ### 🧪 Running It
 
 ```bash
-make build     # Builds the Docker image
-make test      # Runs tests inside the container
+make build          # Builds the Docker image
+make test-unit      # Runs unit tests inside the container (excluding LLM and DB tests)
+make test-integration # Runs integration tests inside the container (excluding LLM tests)
 ```
+
+**Note on Database:** This project utilizes Neo4j. The `docker-compose.yml` sets up separate Neo4j instances for development and testing environments, which are automatically managed when using `docker compose` commands.
 
 Thanks to volume mounts in `docker-compose.yml`, there's no need to rebuild after every code change. The container always sees your latest files.
 
