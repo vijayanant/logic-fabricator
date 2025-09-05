@@ -264,7 +264,14 @@ def main():
                 if command in ["reset", "exit", "quit"]:
                     # These commands handle their own global state or exit
                     command_handlers[command]()
-                elif command in ["state", "rules", "statements", "forks", "help", "history"]:
+                elif command in [
+                    "state",
+                    "rules",
+                    "statements",
+                    "forks",
+                    "help",
+                    "history",
+                ]:
                     # These commands don't take raw_input_text
                     command_handlers[command]()
                 else:
@@ -288,3 +295,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

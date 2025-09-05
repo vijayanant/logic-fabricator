@@ -9,14 +9,17 @@ PROJECT_DIR=$(PWD)
 build:
 	docker build -t $(IMAGE_NAME):$(VERSION) $(PROJECT_DIR)
 
-test:
-	docker compose --profile test run --rm test poetry run pytest -m "not llm"
+test-unit:
+	docker run --rm --env-file .env.test -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run pytest -m "not llm and not db"
 
-test-all:
-	docker compose --profile test run --rm test poetry run pytest
+test-ci: test-unit
+
+test-integration:
+	# docker compose --env-file .env.test --profile test up --exit-code-from app-test --abort-on-container-exit
+	docker compose --env-file .env.test --profile test run --rm app-test poetry run pytest -m "not llm" && docker compose --env-file .env.test --profile test down
 
 run:
-	docker compose --profile dev run --rm dev poetry run logic-fabricator
+	docker compose --env-file .env.dev --profile dev run --rm app-dev poetry run logic-fabricator
 
 tag-dev:
 	docker tag $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):dev
@@ -37,6 +40,6 @@ clean:
 	docker rmi $(IMAGE_NAME):$(VERSION) || true
 
 shell:
-	docker compose --profile dev run --rm dev /bin/bash
+	docker compose --profile dev run --rm app-dev /bin/bash
 
 rebuild: clean build

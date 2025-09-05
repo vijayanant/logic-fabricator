@@ -27,8 +27,10 @@ structlog = "^24.3.0"
 neo4j = "^5.22.0"
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
-markers = "llm: marks tests as requiring LLM calls (slow)"
+markers = [
+  "llm: marks tests as requiring LLM calls (slow)",
+  "db: marks tests that interact with a database",
+]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"

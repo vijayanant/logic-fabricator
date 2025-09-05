@@ -12,13 +12,15 @@ from logic_fabricator.fabric import (
 )
 
 # Neo4j connection details from environment variables set in docker-compose.yml
-NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_USER = os.getenv("NEO4J_USER")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 @pytest.fixture(scope="module")
 def driver():
     """Provides a Neo4j driver instance for the test module."""
+    if not NEO4J_URI or not NEO4J_USER or not NEO4J_PASSWORD:
+        pytest.skip("NEO4J_URI, NEO4J_USER and NEO4J_PASSWORD must be set for persistence tests")
     with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as db_driver:
         yield db_driver
 
@@ -28,6 +30,7 @@ def cleanup_db(driver):
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
 
+@pytest.mark.db
 def test_persist_saves_belief_system_to_neo4j(driver):
     """Tests that a BeliefSystem can be persisted to Neo4j."""
     # Arrange

@@ -10,6 +10,8 @@ build/
 .env/
 .venv/
 .env
+.env.dev
+.env.test
 
 # Poetry lock (optional if you want full reproducibility)
 # poetry.lock

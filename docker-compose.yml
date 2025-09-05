@@ -1,5 +1,5 @@
 services:
-  dev:
+  app-dev:
     image: logic-fabricator:latest
     volumes:
       - ./src:/app/src
@@ -12,11 +12,11 @@ services:
       neo4j:
         condition: service_healthy
     env_file:
-      - .env
       - .env.dev
 
-  test:
+  app-test:
     image: logic-fabricator:latest
+    # command: poetry run pytest -m "not llm"
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
@@ -28,19 +28,18 @@ services:
       neo4j-test:
         condition: service_healthy
     env_file:
-      - .env
       - .env.test
-    command: poetry run pytest -m "not llm"
 
   neo4j:
     image: neo4j:5.22
     profiles:
       - dev
-    ports:
-      - "7474:7474"
-      - "7687:7687"
     environment:
-      - NEO4J_AUTH=neo4j/password
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
+    ports:
+      - "${NEO4J_HTTP_PORT}:7474"
+      - "${NEO4J_BOLT_PORT}:7687"
+
     healthcheck:
       test: ["CMD-SHELL", "wget -O /dev/null http://localhost:7474 || exit 1"]
       interval: 5s
@@ -53,11 +52,12 @@ services:
     image: neo4j:5.22
     profiles:
       - test
-    ports:
-      - "7475:7474"
-      - "7688:7687"
     environment:
-      - NEO4J_AUTH=neo4j/password
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
+    ports:
+      - "${NEO4J_TEST_HTTP_PORT}:7474"
+      - "${NEO4J_TEST_BOLT_PORT}:7687"
+
     healthcheck:
       test: ["CMD-SHELL", "wget -O /dev/null http://localhost:7474 || exit 1"]
       interval: 5s

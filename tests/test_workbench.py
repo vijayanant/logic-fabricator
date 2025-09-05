@@ -1,4 +1,3 @@
-
 import io
 import pytest
 from contextlib import redirect_stdout
@@ -10,9 +9,11 @@ from logic_fabricator.workbench import (
     handle_history_command,
 )
 
+
 @pytest.fixture
 def mock_llm_parser(monkeypatch):
     """Mocks the LLMParser to avoid real API calls."""
+
     def mock_parse(self, text):
         if "socrates is a man" in text:
             # Return a predictable IR object for the test simulation
@@ -22,6 +23,7 @@ def mock_llm_parser(monkeypatch):
     monkeypatch.setattr(
         "logic_fabricator.llm_parser.LLMParser.parse_natural_language", mock_parse
     )
+
 
 def test_history_command_prints_mcp_records(mock_llm_parser):
     """
@@ -42,4 +44,7 @@ def test_history_command_prints_mcp_records(mock_llm_parser):
     # Assert that the output contains the string representation of the SimulationRecord
     assert "--- History ---" in output
     assert "SimulationRecord" in output
-    assert "initial_statements=[Statement(is ['Socrates', 'a_man'], neg=False, prio=1.0)]" in output
+    assert (
+        "initial_statements=[Statement(is ['Socrates', 'a_man'], neg=False, prio=1.0)]"
+        in output
+    )
