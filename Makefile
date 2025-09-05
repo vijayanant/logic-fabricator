@@ -10,7 +10,7 @@ build:
 	docker build -t $(IMAGE_NAME):$(VERSION) $(PROJECT_DIR)
 
 test-unit:
-	docker run --rm --env-file .env.test -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run pytest -m "not llm and not db"
+	docker run --rm -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run pytest -m "not llm and not db"
 
 test-ci: test-unit
 

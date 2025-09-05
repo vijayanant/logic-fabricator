@@ -10,6 +10,20 @@ from logic_fabricator.workbench import (
 )
 
 
+@pytest.fixture(autouse=True)
+def mock_load_config(monkeypatch):
+    """Mocks the load_config function to avoid dependency on environment variables."""
+    from logic_fabricator.config import Config
+    def mock_config():
+        return Config(
+            llm_provider="mock",
+            llm_model="mock",
+            llm_api_key="mock",
+            llm_base_url=None,
+        )
+    monkeypatch.setattr("logic_fabricator.llm_parser.load_config", mock_config)
+
+
 @pytest.fixture
 def mock_llm_parser(monkeypatch):
     """Mocks the LLMParser to avoid real API calls."""
