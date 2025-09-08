@@ -10,6 +10,7 @@ from .ir_translator import IRTranslator
 from .ir.ir_types import IRRule, IRStatement
 from .exceptions import UnsupportedIRFeatureError
 from typing import Union
+from .mcp import MCP # Added MCP import
 
 # Get a structlog logger instance for this module
 logger = structlog.get_logger(__name__)
@@ -18,6 +19,8 @@ logger = structlog.get_logger(__name__)
 _belief_system: BeliefSystem = None
 _llm_parser: LLMParser = None
 _ir_translator: IRTranslator = None
+_mcp: MCP = None # Added _mcp instance
+_belief_system_id: str = None # Added _belief_system_id to store the current belief system ID in MCP
 
 
 def print_welcome():
@@ -100,7 +103,7 @@ def handle_effect_command(raw_input_text: str):
 
 
 def handle_sim_command(raw_input_text: str):
-    global _belief_system
+    global _belief_system, _belief_system_id # Added _belief_system_id to global
     if not raw_input_text:
         print("  !! Error: sim command requires a natural language statement.")
         return
@@ -127,6 +130,9 @@ def handle_sim_command(raw_input_text: str):
         state_before = _belief_system.world_state.copy()
         sim_result = _belief_system.simulate([statement])
         state_after = _belief_system.world_state
+
+        # Persist the simulation record to the MCP
+        _mcp.simulate(_belief_system_id, [statement])
 
         print("\n--- Simulation Report ---")
         if sim_result.forked_belief_system:
@@ -197,8 +203,10 @@ def handle_forks_command():
 
 
 def handle_history_command():
+    global _belief_system_id # Declare _belief_system_id as global
     print("--- History ---")
-    history = _belief_system.get_history()
+    # Assuming _mcp is initialized and _belief_system_id is the current belief system ID
+    history = _mcp.get_simulation_history(_belief_system_id)
     if not history:
         print("(empty)")
     else:
@@ -207,12 +215,15 @@ def handle_history_command():
 
 
 def handle_reset_command():
-    global _belief_system, _llm_parser, _ir_translator
+    global _belief_system, _llm_parser, _ir_translator, _mcp, _belief_system_id
     print("Purging reality. A new belief system is born.")
     _belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     _llm_parser = LLMParser()
     _ir_translator = IRTranslator()
-    return _belief_system  # Return the new belief system for main to update
+    if _mcp is None:
+        _mcp = MCP()
+    _belief_system_id = _mcp.create_belief_system("Workbench Belief System", _belief_system.strategy)
+    # No return value, as these are global variables
 
 
 def handle_exit_command():
@@ -230,6 +241,7 @@ def main():
     _belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     _llm_parser = LLMParser()
     _ir_translator = IRTranslator()
+    _mcp = MCP() # Initialize _mcp
 
     command_handlers = {
         "rule": handle_rule_command,
@@ -295,4 +307,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

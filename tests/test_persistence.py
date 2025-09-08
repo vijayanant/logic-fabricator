@@ -85,3 +85,23 @@ def test_simulation_is_persisted_in_mcp_graph(driver, mcp_fixture):
     # CLEANUP: Delete the node to ensure test idempotency
     with driver.session() as session:
         session.run("MATCH (s:Simulation {id: $id}) DETACH DELETE s", id=str(simulation_id))
+
+@pytest.mark.db
+def test_mcp_get_simulation_history_returns_records(driver, mcp_fixture):
+    from logic_fabricator.fabric import ForkingStrategy, Rule, Condition, Statement, SimulationRecord
+    mcp = mcp_fixture
+    belief_system_id = mcp.create_belief_system("Test History BS", ForkingStrategy.COEXIST)
+    
+    rule = Rule(
+        condition=Condition(verb="is", terms=["?x", "a man"]),
+        consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+    )
+    mcp.add_rule(belief_system_id, rule)
+
+    initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
+    mcp.simulate(belief_system_id, [initial_statement])
+
+    history = mcp.get_simulation_history(belief_system_id)
+    assert len(history) == 1
+    assert isinstance(history[0], SimulationRecord)
+    assert history[0].initial_statements[0] == initial_statement

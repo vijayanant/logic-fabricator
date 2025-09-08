@@ -53,6 +53,10 @@ class Statement:
             "priority": self.priority,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
+
 
 class Condition:
     def __init__(
@@ -124,6 +128,14 @@ class Condition:
                 "terms": self.terms,
                 "verb_synonyms": self.verb_synonyms,
             }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        if "and_conditions" in data:
+            and_conditions = [cls.from_dict(d) for d in data["and_conditions"]]
+            return cls(and_conditions=and_conditions)
+        else:
+            return cls(verb=data["verb"], terms=data["terms"], verb_synonyms=data.get("verb_synonyms", []))
 
     def _match_single_condition(self, statement: "Statement") -> dict | None:
         logger.debug(
@@ -374,6 +386,12 @@ class Rule:
             "consequences": [c.to_dict() for c in self.consequences],
         }
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        condition = Condition.from_dict(data["condition"])
+        consequences = [Statement.from_dict(s_dict) for s_dict in data["consequences"]]
+        return cls(condition=condition, consequences=consequences)
+
     def applies_to(self, statements: list["Statement"]) -> dict | None:
         logger.debug(
             "Checking if rule applies", rule=self, statements_count=len(statements)
@@ -419,6 +437,7 @@ class Rule:
 
 
 class ContradictionEngine:
+    _HYPOTHETICAL_ENTITY_ = "_HYPOTHETICAL_ENTITY_"
     def detect(self, s1: Statement, s2: Statement) -> bool:
         logger.debug(
             "Detecting contradiction between statements", statement1=s1, statement2=s2
@@ -438,7 +457,7 @@ class ContradictionEngine:
         logger.debug("Checking one-way conflict", rule_a=rule_a, rule_b=rule_b)
         """Checks if rule_b's condition can lead to a state that conflicts with rule_a."""
         # Use a hypothetical entity for the simulation
-        hypothetical_entity = "_HYPOTHETICAL_ENTITY_"
+        hypothetical_entity = self._HYPOTHETICAL_ENTITY_
 
         # Create a hypothetical statement from rule_b's condition
         if not rule_b.condition.terms or not rule_b.condition.terms[0].startswith("?"):
@@ -634,7 +653,7 @@ class BeliefSystem:
         self.strategy = strategy
         self.statements = set()
         self.contradictions = []
-        self.mcp_records = []
+        
         self.forks = []
         self.world_state = {}
         self.effects_applied = set()  # Permanent memory for applied effects
@@ -965,9 +984,7 @@ class BeliefSystem:
         )
         return derived_facts, list(applied_rules_set)
 
-    def get_history(self):
-        """Returns a copy of the MCP records for this belief system."""
-        return self.mcp_records.copy()
+    
 
     def simulate(self, new_statements_to_process: list["Statement"]):
         logger.info(
@@ -1026,7 +1043,7 @@ class BeliefSystem:
             applied_rules=applied_rules,
             forked_belief_system=forked_belief_system,
         )
-        self.mcp_records.append(record)
+        
         logger.info(
             "Simulation completed.",
             derived_facts_count=len(derived_facts),
@@ -1034,8 +1051,6 @@ class BeliefSystem:
             forked_system_created=bool(forked_belief_system),
         )
         return simulation_result
-
-    
 
 
 class SimulationResult:
@@ -1079,4 +1094,24 @@ class SimulationRecord:
     forked_belief_system: Optional["BeliefSystem"] = None
     id: uuid.UUID = field(default_factory=uuid.uuid4)
 
-    
+    def __str__(self):
+        fork_str = (
+            f", forked={self.forked_belief_system.id}"
+            if self.forked_belief_system
+            else ""
+        )
+        return (
+            f"SimulationRecord(initial={len(self.initial_statements)}, "
+            f"derived={len(self.derived_facts)}, applied={len(self.applied_rules)}{fork_str})"
+        )
+
+    def __repr__(self):
+        fork_repr = (
+            repr(self.forked_belief_system) if self.forked_belief_system else "None"
+        )
+        return (
+            f"SimulationRecord(initial_statements={repr(self.initial_statements)}, "
+            f"derived_facts={repr(self.derived_facts)}, "
+            f"applied_rules={repr(self.applied_rules)}, "
+            f"forked_belief_system={fork_repr})"
+        )

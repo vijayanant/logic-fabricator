@@ -7,6 +7,7 @@ from logic_fabricator.workbench import (
     handle_reset_command,
     handle_sim_command,
     handle_history_command,
+    _belief_system # Import _belief_system directly
 )
 
 
@@ -39,12 +40,23 @@ def mock_llm_parser(monkeypatch):
     )
 
 
+@pytest.mark.db
 def test_history_command_prints_mcp_records(mock_llm_parser):
     """
     Tests that the 'history' command function prints MCP records from the belief system.
     """
     # Initialize the global belief system used by the handlers
     handle_reset_command()
+    from logic_fabricator.workbench import _belief_system # Re-import to get updated global
+
+    # Add a rule to ensure derived facts
+    from logic_fabricator.fabric import Rule, Condition, Statement
+    _belief_system.rules.append(
+        Rule(
+            condition=Condition(verb="is", terms=["?x", "a_man"]),
+            consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+        )
+    )
 
     # Run a simulation to create a history record
     handle_sim_command("socrates is a man")
