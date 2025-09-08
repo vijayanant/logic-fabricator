@@ -26,14 +26,18 @@ class MCP:
     REL_DERIVED_FACT = "DERIVED_FACT"
     REL_APPLIED_RULE = "APPLIED_RULE"
 
-    def __init__(self):
-        uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-        user = os.getenv("NEO4J_USER", "neo4j")
-        password = os.getenv("NEO4J_PASSWORD", "password")
-        self._driver = GraphDatabase.driver(uri, auth=(user, password))
+    def __init__(self, driver=None):
+        if driver:
+            self._driver = driver
+        else:
+            uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+            user = os.getenv("NEO4J_USER", "neo4j")
+            password = os.getenv("NEO4J_PASSWORD", "password")
+            self._driver = GraphDatabase.driver(uri, auth=(user, password))
+        
         self.belief_systems = {}
         self.contradiction_engine = ContradictionEngine()
-        logger.info("MCP initialized and connected to Neo4j.", uri=uri)
+        logger.info("MCP initialized and connected to its database.")
 
     def close(self):
         self._driver.close()
