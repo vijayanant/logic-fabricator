@@ -3,12 +3,6 @@ import pytest
 from contextlib import redirect_stdout
 
 from logic_fabricator.ir.ir_types import IRStatement
-from logic_fabricator.workbench import (
-    handle_reset_command,
-    handle_sim_command,
-    handle_history_command,
-    _belief_system # Import _belief_system directly
-)
 
 
 @pytest.fixture(autouse=True)
@@ -40,18 +34,42 @@ def mock_llm_parser(monkeypatch):
     )
 
 
+@pytest.fixture
+def mock_mcp(monkeypatch):
+    """
+    Mocks the MCP to prevent actual database connections.
+    """
+    class MockMCP:
+        def __init__(self):
+            pass
+
+        def create_belief_system(self, *args, **kwargs):
+            return "mock_belief_system_id"
+
+        def simulate(self, *args, **kwargs):
+            pass
+
+        def get_simulation_history(self, *args, **kwargs):
+            return []
+
+    monkeypatch.setattr("logic_fabricator.mcp.MCP", MockMCP)
+
+
 @pytest.mark.db
 def test_history_command_prints_mcp_records(mock_llm_parser):
     """
     Tests that the 'history' command function prints MCP records from the belief system.
     """
+    # We need to import Workbench here because it's used in this test
+    from logic_fabricator.workbench import Workbench
+
+    workbench = Workbench()
     # Initialize the global belief system used by the handlers
-    handle_reset_command()
-    from logic_fabricator.workbench import _belief_system # Re-import to get updated global
+    workbench.handle_reset_command()
 
     # Add a rule to ensure derived facts
     from logic_fabricator.fabric import Rule, Condition, Statement
-    _belief_system.rules.append(
+    workbench.belief_system.rules.append(
         Rule(
             condition=Condition(verb="is", terms=["?x", "a_man"]),
             consequences=[Statement(verb="is", terms=["?x", "mortal"])],
@@ -59,11 +77,11 @@ def test_history_command_prints_mcp_records(mock_llm_parser):
     )
 
     # Run a simulation to create a history record
-    handle_sim_command("socrates is a man")
+    workbench.handle_sim_command("socrates is a man")
 
     output_capture = io.StringIO()
     with redirect_stdout(output_capture):
-        handle_history_command()
+        workbench.handle_history_command()
 
     output = output_capture.getvalue()
 
