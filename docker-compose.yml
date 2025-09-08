@@ -4,6 +4,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
+      - ./logs:/app/logs
     working_dir: /app
     tty: true
     profiles:
