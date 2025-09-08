@@ -100,7 +100,8 @@ If you’re new to the project, check these out first:
 - [`docs/logic_fabricator_brief.md`](./docs/logic_fabricator_brief.md)
 - [`docs/architecture.md`](./docs/architecture.md)
 - [`docs/engine_features.md`](./docs/engine_features.md) # New: Comprehensive list of engine capabilities
-- [`docs/mcp_design.md`](./docs/mcp_design.md)
+- [`docs/mcp_philosophy.md`](./docs/mcp_philosophy.md)
+- [`docs/mcp_implementation.md`](./docs/mcp_implementation.md)
 - [`docs/simulation_engine.md`](./docs/simulation_engine.md)
 
 Then branch out from there. Like the belief systems, this doc world is forkable.
