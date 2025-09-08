@@ -80,8 +80,8 @@ make build
 To ensure the logical integrity of the engine and verify your configuration, run the test suite.
 
 ```bash
-make test-unit      # Runs unit tests
-make test-integration # Runs integration tests
+make test-unit      # Runs unit tests (fast, isolated, uses mock database)
+make test-integration # Runs integration tests (slower, uses real Neo4j database)
 ```
 
 ### 4. Launch the Workbench
