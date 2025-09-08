@@ -8,6 +8,7 @@ from logic_fabricator.fabric import (
     ForkingStrategy,
     Effect,
 )
+import json
 
 
 def test_statement_has_structure():
@@ -536,3 +537,50 @@ def test_belief_system_detects_and_records_latent_conflict_on_rule_add():
     assert record.statement2 is None  # No statement-level contradiction here
     assert "latent conflict" in record.resolution.lower()
     assert record.type == "rule_latent"  # Assert the type
+
+def test_statement_to_dict_json():
+    """
+    Tests that Statement.to_dict_json() returns a correct JSON string representation.
+    """
+    s = Statement(verb="is", terms=["Socrates", "a man"], negated=False, priority=1.0)
+    expected_dict = {
+        "verb": "is",
+        "terms": ["Socrates", "a man"],
+        "negated": False,
+        "priority": 1.0,
+    }
+    assert s.to_dict_json() == json.dumps(expected_dict)
+
+    s_negated = Statement(verb="is", terms=["sky", "blue"], negated=True, priority=0.5)
+    expected_dict_negated = {
+        "verb": "is",
+        "terms": ["sky", "blue"],
+        "negated": True,
+        "priority": 0.5,
+    }
+    assert s_negated.to_dict_json() == json.dumps(expected_dict_negated)
+
+def test_condition_to_dict_json():
+    """
+    Tests that Condition.to_dict_json() returns a correct JSON string representation.
+    """
+    # Test with a simple condition
+    c_simple = Condition(verb="is", terms=["Socrates", "a man"])
+    expected_dict_simple = {
+        "verb": "is",
+        "terms": ["Socrates", "a man"],
+        "verb_synonyms": [],
+    }
+    assert c_simple.to_dict_json() == json.dumps(expected_dict_simple)
+
+    # Test with a conjunctive condition
+    sub_c1 = Condition(verb="is", terms=["?x", "a king"])
+    sub_c2 = Condition(verb="is", terms=["?x", "wise"])
+    c_conjunctive = Condition(and_conditions=[sub_c1, sub_c2])
+    expected_dict_conjunctive = {
+        "and_conditions": [
+            {"verb": "is", "terms": ["?x", "a king"], "verb_synonyms": []},
+            {"verb": "is", "terms": ["?x", "wise"], "verb_synonyms": []},
+        ]
+    }
+    assert c_conjunctive.to_dict_json() == json.dumps(expected_dict_conjunctive)

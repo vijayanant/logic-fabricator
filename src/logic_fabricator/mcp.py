@@ -79,6 +79,53 @@ class MCP:
             "Rule added and persisted.", rule=rule, belief_system_id=belief_system_id
         )
 
+    def fork_belief_system(self, parent_id: str, name: str) -> str:
+        parent_belief_system = self.belief_systems.get(parent_id)
+        if not parent_belief_system:
+            logger.error("Parent BeliefSystem not found.", id=parent_id)
+            raise ValueError(f"Parent BeliefSystem with ID {parent_id} not found.")
+
+        # Create a new BeliefSystem instance (in-memory clone)
+        # We need to deep copy rules, statements, world_state, etc.
+        # For simplicity, let's assume a shallow copy of rules for now,
+        # and a new ID for the forked system.
+        # A proper deep copy would involve cloning all mutable objects.
+        forked_belief_system = BeliefSystem(
+            rules=list(parent_belief_system.rules), # Shallow copy of rules
+            contradiction_engine=parent_belief_system.contradiction_engine,
+            strategy=parent_belief_system.strategy,
+        )
+        # Copy statements and world_state
+        forked_belief_system.statements = set(parent_belief_system.statements)
+        forked_belief_system.world_state = parent_belief_system.world_state.copy()
+        forked_belief_system.effects_applied = set(parent_belief_system.effects_applied)
+
+
+        self.belief_systems[str(forked_belief_system.id)] = forked_belief_system
+
+        with self._driver.session() as session:
+            # Create the new BeliefSystem node
+            session.run(
+                "CREATE (bs:BeliefSystem {id: $id, name: $name, strategy: $strategy, created_at: $created_at})",
+                id=str(forked_belief_system.id),
+                name=name,
+                strategy=forked_belief_system.strategy.value,
+                created_at=time.time(),
+            )
+            # Create the FORKED_FROM relationship
+            session.run(
+                f"MATCH (forked_bs:BeliefSystem {{id: $forked_id}}), (parent_bs:BeliefSystem {{id: $parent_id}}) CREATE (forked_bs)-[:FORKED_FROM]->(parent_bs)",
+                forked_id=str(forked_belief_system.id),
+                parent_id=parent_id,
+            )
+        logger.info(
+            "BeliefSystem forked and persisted.",
+            parent_id=parent_id,
+            forked_id=forked_belief_system.id,
+            name=name,
+        )
+        return str(forked_belief_system.id)
+
     
 
     def simulate(self, belief_system_id: str, statements: list[Statement]) -> str:

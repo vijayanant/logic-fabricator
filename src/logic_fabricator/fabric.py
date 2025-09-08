@@ -53,6 +53,9 @@ class Statement:
             "priority": self.priority,
         }
 
+    def to_dict_json(self):
+        return json.dumps(self.to_dict())
+
     @classmethod
     def from_dict(cls, data: dict):
         return cls(**data)
@@ -128,6 +131,9 @@ class Condition:
                 "terms": self.terms,
                 "verb_synonyms": self.verb_synonyms,
             }
+
+    def to_dict_json(self):
+        return json.dumps(self.to_dict())
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -385,6 +391,9 @@ class Rule:
             "condition": self.condition.to_dict(),
             "consequences": [c.to_dict() for c in self.consequences],
         }
+
+    def consequences_to_dict_json(self):
+        return json.dumps([c.to_dict() for c in self.consequences])
 
     @classmethod
     def from_dict(cls, data: dict):
