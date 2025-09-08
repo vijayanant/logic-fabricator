@@ -235,52 +235,53 @@ class Workbench:
         exit()
 
 
-def run_repl(self):
-    self.print_welcome()
+    def run_repl(self):
+        self.print_welcome()
 
-    while True:
-        try:
-            user_input = input("\n>> ").strip()
-            if not user_input:
-                continue
+        while True:
+            try:
+                user_input = input("\n>> ").strip()
+                if not user_input:
+                    continue
 
-            parts = user_input.split(
-                maxsplit=1
-            )  # Split only on first space to get command and rest of input
-            command = parts[0].lower()
-            raw_input_text = parts[1] if len(parts) > 1 else ""
+                parts = user_input.split(
+                    maxsplit=1
+                )  # Split only on first space to get command and rest of input
+                command = parts[0].lower()
+                raw_input_text = parts[1] if len(parts) > 1 else ""
 
-            if command in self.command_handlers:
-                if command in ["reset", "exit", "quit"]:
-                    # These commands handle their own global state or exit
-                    self.command_handlers[command]()
-                elif command in [
-                    "state",
-                    "rules",
-                    "statements",
-                    "forks",
-                    "help",
-                    "history",
-                ]:
-                    # These commands don't take raw_input_text
-                    self.command_handlers[command]()
+                if command in self.command_handlers:
+                    if command in ["reset", "exit", "quit"]:
+                        # These commands handle their own global state or exit
+                        self.command_handlers[command]()
+                    elif command in [
+                        "state",
+                        "rules",
+                        "statements",
+                        "forks",
+                        "help",
+                        "history",
+                    ]:
+                        # These commands don't take raw_input_text
+                        self.command_handlers[command]()
+                    else:
+                        # Commands that take raw_input_text
+                        self.command_handlers[command](raw_input_text)
                 else:
-                    # Commands that take raw_input_text
-                    self.command_handlers[command](raw_input_text)
-            else:
-                print(
-                    f"  !! Unknown command: '{command}'. Type 'help' for a list of commands."
-                )
+                    print(
+                        f"  !! Unknown command: '{command}'. Type 'help' for a list of commands."
+                    )
 
-        except KeyboardInterrupt:
-            print("\nExiting workbench.")
-            break
-        except Exception as e:
-            logger.error(
-                "A critical error occurred in workbench", exc_info=True
-            )  # Log the exception
-            print(f"\n  !! A critical error occurred: {e}")
-            print("  !! The fabric of reality may be unstable.")
+            except KeyboardInterrupt:
+                print("\nExiting workbench.")
+                break
+            except Exception as e:
+                logger.error(
+                    "A critical error occurred in workbench", exc_info=True
+                )  # Log the exception
+                print(f"\n  !! A critical error occurred: {e}")
+                print("  !! The fabric of reality may be unstable.")
+
 
 
 def main():

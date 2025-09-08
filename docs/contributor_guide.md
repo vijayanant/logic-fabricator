@@ -26,7 +26,7 @@ These tests are designed to be fast and to run in isolation without any external
 make test-unit
 ```
 
-This command runs all tests that are **not** marked with `@pytest.mark.db` or `@pytest.mark.llm`.
+This command runs all tests that are **not** marked with `@pytest.mark.llm`.
 
 **Integration Tests (Slow & Comprehensive)**
 
@@ -36,13 +36,13 @@ These tests verify the interaction between different components of the system, i
 make test-integration
 ```
 
-This command runs all tests, including those marked with `@pytest.mark.db`.
+This command runs all tests, using the real database adapter.
 
 **Writing Tests**
 
 -   **For pure logic** (e.g., new features in `fabric.py`), write standard pytest functions in a relevant `tests/` file.
 -   **For MCP orchestration logic**, write unit tests in `tests/test_mcp.py` using the `MockAdapter` to simulate database interactions.
--   **For database-specific logic** (e.g., new Cypher queries in `neo4j_adapter.py`), write integration tests in `tests/test_persistence.py` and mark them with `@pytest.mark.db`.
+-   **For database-specific logic** (e.g., new Cypher queries in `neo4j_adapter.py`), write tests in `tests/test_persistence.py`. These tests will automatically use the appropriate database adapter based on the test environment.
 
 **Note on Database:** This project utilizes Neo4j. The `docker-compose.yml` sets up separate Neo4j instances for development and testing environments, which are automatically managed when using `docker compose` commands.
 
