@@ -10,7 +10,8 @@ from .ir_translator import IRTranslator
 from .ir.ir_types import IRRule, IRStatement
 from .exceptions import UnsupportedIRFeatureError
 from typing import Union
-from .mcp import MCP  # Added MCP import
+from .mcp import MCP
+from .neo4j_adapter import Neo4jAdapter
 
 # Get a structlog logger instance for this module
 logger = structlog.get_logger(__name__)
@@ -23,7 +24,7 @@ class Workbench:
         )
         self.llm_parser: LLMParser = LLMParser()
         self.ir_translator: IRTranslator = IRTranslator()
-        self.mcp: MCP = MCP()
+        self.mcp: MCP = MCP(db_adapter=Neo4jAdapter())
         self.belief_system_id: str = self.mcp.create_belief_system(
             "Workbench Belief System", self.belief_system.strategy
         )
@@ -224,7 +225,7 @@ class Workbench:
         )
         self.llm_parser = LLMParser()
         self.ir_translator = IRTranslator()
-        self.mcp = MCP()
+        self.mcp: MCP = MCP(db_adapter=Neo4jAdapter())
         self.belief_system_id = self.mcp.create_belief_system(
             "Workbench Belief System", self.belief_system.strategy
         )

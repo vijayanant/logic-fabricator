@@ -59,6 +59,7 @@ All while keeping it fun, transparent, and user-driven.
 ### 6. **MCP (Memory Control Plane)**
 
 - Tracks logic history over time.
+- Its connection to a physical database is abstracted via a `DatabaseAdapter` protocol, allowing for flexible and testable persistence.
 - Records:
   - When rules were added or mutated
   - Contradictions and forks

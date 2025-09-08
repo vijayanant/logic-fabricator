@@ -10,12 +10,12 @@ build:
 	docker build -t $(IMAGE_NAME):$(VERSION) $(PROJECT_DIR)
 
 test-unit:
-	docker run --rm -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run pytest -m "not llm and not db"
+	docker run -e MOCK_DB=true --rm -v $(PROJECT_DIR):/app $(IMAGE_NAME):$(VERSION) poetry run pytest -m "not llm"
 
 test-ci: test-unit
 
 test-integration:
-	docker compose --env-file .env.test --profile test up --exit-code-from app-test --abort-on-container-exit
+	docker compose --env-file .env.test --profile test run --rm app-test poetry run pytest -m "not llm"
 	docker compose --env-file .env.test --profile test down
 
 run:

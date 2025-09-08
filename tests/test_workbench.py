@@ -3,6 +3,7 @@ import pytest
 from contextlib import redirect_stdout
 
 from logic_fabricator.ir.ir_types import IRStatement
+from logic_fabricator.fabric import SimulationRecord, Statement, Rule, Condition
 
 
 @pytest.fixture(autouse=True)
@@ -61,7 +62,7 @@ def mock_mcp(monkeypatch):
             return MockDriver()
 
     class MockMCP:
-        def __init__(self):
+        def __init__(self, db_adapter=None):
             pass
 
         def create_belief_system(self, *args, **kwargs):
@@ -71,14 +72,28 @@ def mock_mcp(monkeypatch):
             pass
 
         def get_simulation_history(self, *args, **kwargs):
-            return []
+            # Create a mock SimulationRecord that matches the expected output
+            mock_statement = Statement(verb="is", terms=["Socrates", "a_man"], negated=False, priority=1.0)
+            mock_derived_fact = Statement(verb="is", terms=["Socrates", "mortal"], negated=False, priority=1.0)
+            mock_rule = Rule(condition=Condition(verb="is", terms=["?x", "a_man"]), consequences=[Statement(verb="is", terms=["?x", "mortal"])])
+
+            mock_record = SimulationRecord(
+                belief_system_id="mock_belief_system_id",
+                initial_statements=[mock_statement],
+                derived_facts=[mock_derived_fact],
+                applied_rules=[mock_rule],
+                forked_belief_system=None,
+            )
+            return [mock_record]
+
+        def close(self):
+            pass
 
     monkeypatch.setattr("logic_fabricator.mcp.MCP", MockMCP)
     monkeypatch.setattr("neo4j.GraphDatabase", MockGraphDatabase) # Mock the entire GraphDatabase object
 
 
-@pytest.mark.db
-def test_history_command_prints_mcp_records(mock_llm_parser):
+def test_history_command_prints_mcp_records(mock_llm_parser, mock_mcp):
     """
     Tests that the 'history' command function prints MCP records from the belief system.
     """

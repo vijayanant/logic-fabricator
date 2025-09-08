@@ -18,6 +18,7 @@ build/
 
 # Logs, coverage, test output
 *.log
+logs/
 .coverage
 htmlcov/
 .cache/

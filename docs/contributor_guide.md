@@ -14,13 +14,35 @@ This guide is for human developers, curious agents, and future fabricators. It c
 - **Editor:** Your choice — but code runs/tests inside Docker
 - **Tests:** `pytest`
 
-### 🧪 Running It
+### 🧪 Running Tests
+
+This project has two primary categories of tests, and it is crucial to understand the distinction.
+
+**Unit Tests (Fast & Isolated)**
+
+These tests are designed to be fast and to run in isolation without any external dependencies like a database or LLM. They are perfect for testing the core logic of individual components.
 
 ```bash
-make build          # Builds the Docker image
-make test-unit      # Runs unit tests inside the container (excluding LLM and DB tests)
-make test-integration # Runs integration tests inside the container (excluding LLM tests)
+make test-unit
 ```
+
+This command runs all tests that are **not** marked with `@pytest.mark.db` or `@pytest.mark.llm`.
+
+**Integration Tests (Slow & Comprehensive)**
+
+These tests verify the interaction between different components of the system, including the database. They are slower and require a running Neo4j instance, which is automatically managed by Docker Compose.
+
+```bash
+make test-integration
+```
+
+This command runs all tests, including those marked with `@pytest.mark.db`.
+
+**Writing Tests**
+
+-   **For pure logic** (e.g., new features in `fabric.py`), write standard pytest functions in a relevant `tests/` file.
+-   **For MCP orchestration logic**, write unit tests in `tests/test_mcp.py` using the `MockAdapter` to simulate database interactions.
+-   **For database-specific logic** (e.g., new Cypher queries in `neo4j_adapter.py`), write integration tests in `tests/test_persistence.py` and mark them with `@pytest.mark.db`.
 
 **Note on Database:** This project utilizes Neo4j. The `docker-compose.yml` sets up separate Neo4j instances for development and testing environments, which are automatically managed when using `docker compose` commands.
 

@@ -1047,6 +1047,7 @@ class BeliefSystem:
         )
 
         record = SimulationRecord(
+            belief_system_id=self.id,
             initial_statements=new_statements_to_process,
             derived_facts=derived_facts,
             applied_rules=applied_rules,
@@ -1097,6 +1098,7 @@ class SimulationResult:
 
 @dataclass
 class SimulationRecord:
+    belief_system_id: str
     initial_statements: list[Statement]
     derived_facts: list[Statement]
     applied_rules: list[Rule]
