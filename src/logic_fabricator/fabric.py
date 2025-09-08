@@ -2,6 +2,8 @@ import enum
 import json
 import structlog
 from typing import Optional
+import uuid
+from dataclasses import dataclass, field
 
 logger = structlog.get_logger(__name__)
 
@@ -331,6 +333,14 @@ class Effect:
 
     def __hash__(self):
         return hash((self.target, self.attribute, self.operation, self.value))
+
+    def to_dict(self):
+        return {
+            "target": self.target,
+            "attribute": self.attribute,
+            "operation": self.operation,
+            "value": self.value,
+        }
 
 
 class Rule:
@@ -1010,14 +1020,13 @@ class BeliefSystem:
             forked_belief_system=forked_belief_system,
         )
 
-        self.mcp_records.append(
-            SimulationRecord(
-                initial_statements=new_statements_to_process,
-                derived_facts=derived_facts,
-                applied_rules=applied_rules,
-                forked_belief_system=forked_belief_system,
-            )
+        record = SimulationRecord(
+            initial_statements=new_statements_to_process,
+            derived_facts=derived_facts,
+            applied_rules=applied_rules,
+            forked_belief_system=forked_belief_system,
         )
+        self.mcp_records.append(record)
         logger.info(
             "Simulation completed.",
             derived_facts_count=len(derived_facts),
@@ -1026,16 +1035,7 @@ class BeliefSystem:
         )
         return simulation_result
 
-    def persist(self, driver):
-        """Serializes the BeliefSystem and saves it as a node in Neo4j."""
-        rules_as_dicts = [rule.to_dict() for rule in self.rules]
-
-        with driver.session() as session:
-            session.run(
-                "CREATE (bs:BeliefSystem {id: $id, rules: $rules_json})",
-                id=self.id,
-                rules_json=json.dumps(rules_as_dicts),
-            )
+    
 
 
 class SimulationResult:
@@ -1071,57 +1071,12 @@ class SimulationResult:
         )
 
 
+@dataclass
 class SimulationRecord:
-    def __init__(
-        self,
-        initial_statements: list[Statement],
-        derived_facts: list[Statement],
-        applied_rules: list[Rule],
-        forked_belief_system: "BeliefSystem" = None,
-    ):
-        self.initial_statements = initial_statements
-        self.derived_facts = derived_facts
-        self.applied_rules = applied_rules
-        self.forked_belief_system = forked_belief_system
+    initial_statements: list[Statement]
+    derived_facts: list[Statement]
+    applied_rules: list[Rule]
+    forked_belief_system: Optional["BeliefSystem"] = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
-    def __str__(self):
-        fork_str = (
-            f", forked={self.forked_belief_system.id}"
-            if self.forked_belief_system
-            else ""
-        )
-        return (
-            f"SimulationRecord(initial={len(self.initial_statements)}, "
-            f"derived={len(self.derived_facts)}, applied={len(self.applied_rules)}{fork_str})"
-        )
-
-    def __repr__(self):
-        fork_repr = (
-            repr(self.forked_belief_system) if self.forked_belief_system else "None"
-        )
-        return (
-            f"SimulationRecord(initial_statements={repr(self.initial_statements)}, "
-            f"derived_facts={repr(self.derived_facts)}, "
-            f"applied_rules={repr(self.applied_rules)}, "
-            f"forked_belief_system={fork_repr})"
-        )
-
-    def __eq__(self, other):
-        if not isinstance(other, SimulationRecord):
-            return NotImplemented
-        return (
-            self.initial_statements == other.initial_statements
-            and self.derived_facts == other.derived_facts
-            and self.applied_rules == other.applied_rules
-            and self.forked_belief_system == other.forked_belief_system
-        )
-
-    def __hash__(self):
-        return hash(
-            (
-                tuple(self.initial_statements),
-                tuple(self.derived_facts),
-                tuple(self.applied_rules),
-                self.forked_belief_system,
-            )
-        )
+    

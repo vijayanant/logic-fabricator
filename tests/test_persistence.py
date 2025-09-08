@@ -1,4 +1,3 @@
-
 import os
 import pytest
 from neo4j import GraphDatabase
@@ -21,8 +20,9 @@ def driver():
     """Provides a Neo4j driver instance for the test module."""
     if not NEO4J_URI or not NEO4J_USER or not NEO4J_PASSWORD:
         pytest.skip("NEO4J_URI, NEO4J_USER and NEO4J_PASSWORD must be set for persistence tests")
-    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as db_driver:
-        yield db_driver
+    db_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    yield db_driver
+    db_driver.close()
 
 @pytest.fixture(autouse=True)
 def cleanup_db(driver):
@@ -30,31 +30,58 @@ def cleanup_db(driver):
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
 
+@pytest.fixture(scope="function")
+def mcp_fixture():
+    """Provides an MCP instance and ensures its driver is closed."""
+    from logic_fabricator.mcp import MCP
+    mcp = MCP()
+    yield mcp
+    mcp.close()
+
 @pytest.mark.db
-def test_persist_saves_belief_system_to_neo4j(driver):
-    """Tests that a BeliefSystem can be persisted to Neo4j."""
-    # Arrange
+def test_simulation_is_persisted_in_mcp_graph(driver, mcp_fixture):
+    """
+    This test asserts that a simulation record is persisted as a node
+    in the Neo4j graph database after a simulation is run, orchestrated by the MCP.
+    """
+    # ARRANGE
+    from logic_fabricator.fabric import ForkingStrategy
+
+    mcp = mcp_fixture
+    belief_system_name = "Test Belief System for Simulation Persistence"
+    belief_system_id = mcp.create_belief_system(belief_system_name, ForkingStrategy.COEXIST)
+
     rule = Rule(
         condition=Condition(verb="is", terms=["?x", "a man"]),
         consequences=[Statement(verb="is", terms=["?x", "mortal"])],
     )
-    belief_system = BeliefSystem(rules=[rule], contradiction_engine=ContradictionEngine())
-    belief_system_id = belief_system.id
+    mcp.add_rule(belief_system_id, rule)
 
-    # Act
-    belief_system.persist(driver)
+    initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
+    
+    # ACT
+    # Simulate via MCP, which should handle persistence
+    simulation_id = mcp.simulate(belief_system_id, [initial_statement])
 
-    # Assert
+    # ASSERT
+    # Retrieve the simulation node directly from Neo4j using the driver fixture
     with driver.session() as session:
-        result = session.run("MATCH (bs:BeliefSystem {id: $id}) RETURN bs", id=belief_system_id)
-        record = result.single()
-        assert record is not None
-        node = record["bs"]
-        assert node["id"] == belief_system_id
+        result = session.run(
+            "MATCH (s:Simulation {id: $id}) RETURN s", id=str(simulation_id)
+        ).single()
         
-        # Verify the rules by loading the JSON string
+        assert result is not None
+        node = result["s"]
+        assert node["id"] == str(simulation_id)
+
         import json
-        rules_from_db = json.loads(node["rules"])
-        assert isinstance(rules_from_db, list)
-        assert len(rules_from_db) == 1
-        assert rules_from_db[0]["condition"]["verb"] == "is"
+        initial_statements_db = json.loads(node["initial_statements"])
+        derived_facts_db = json.loads(node["derived_facts"])
+        assert len(initial_statements_db) == 1
+        assert initial_statements_db[0]["verb"] == "is"
+        assert len(derived_facts_db) == 1
+        assert derived_facts_db[0]["terms"] == ["Socrates", "mortal"]
+
+    # CLEANUP: Delete the node to ensure test idempotency
+    with driver.session() as session:
+        session.run("MATCH (s:Simulation {id: $id}) DETACH DELETE s", id=str(simulation_id))
