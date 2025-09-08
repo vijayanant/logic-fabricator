@@ -28,6 +28,12 @@ class Workbench:
             "Workbench Belief System", self.belief_system.strategy
         )
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.mcp.close()
+
     def print_welcome(self):
         """Prints the welcome message and help text."""
         print("\n--- Logic Fabricator Workbench ---")
@@ -282,24 +288,23 @@ def main():
         "Workbench starting up.", initial_message="Welcome to Logic Fabricator!"
     )  # Example log message
 
-    workbench = Workbench()
+    with Workbench() as workbench:
+        workbench.command_handlers = {
+            "rule": workbench.handle_rule_command,
+            "effect": workbench.handle_effect_command,
+            "sim": workbench.handle_sim_command,
+            "state": workbench.handle_state_command,
+            "rules": workbench.handle_rules_command,
+            "statements": workbench.handle_statements_command,
+            "forks": workbench.handle_forks_command,
+            "history": workbench.handle_history_command,
+            "reset": workbench.handle_reset_command,
+            "help": workbench.print_help,
+            "exit": workbench.handle_exit_command,
+            "quit": workbench.handle_exit_command,
+        }
 
-    workbench.command_handlers = {
-        "rule": workbench.handle_rule_command,
-        "effect": workbench.handle_effect_command,
-        "sim": workbench.handle_sim_command,
-        "state": workbench.handle_state_command,
-        "rules": workbench.handle_rules_command,
-        "statements": workbench.handle_statements_command,
-        "forks": workbench.handle_forks_command,
-        "history": workbench.handle_history_command,
-        "reset": workbench.handle_reset_command,
-        "help": workbench.print_help,
-        "exit": workbench.handle_exit_command,
-        "quit": workbench.handle_exit_command,
-    }
-
-    workbench.run_repl()
+        workbench.run_repl()
 
 
 if __name__ == "__main__":

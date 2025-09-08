@@ -16,8 +16,9 @@ services:
       - .env.dev
 
   app-test:
+    build: .
     image: logic-fabricator:latest
-    # command: poetry run pytest -m "not llm"
+    command: poetry run pytest -m "not llm"
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests

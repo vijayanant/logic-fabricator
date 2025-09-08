@@ -15,8 +15,8 @@ test-unit:
 test-ci: test-unit
 
 test-integration:
-	# docker compose --env-file .env.test --profile test up --exit-code-from app-test --abort-on-container-exit
-	docker compose --env-file .env.test --profile test run --rm app-test poetry run pytest -m "not llm" && docker compose --env-file .env.test --profile test down
+	docker compose --env-file .env.test --profile test up --exit-code-from app-test --abort-on-container-exit
+	docker compose --env-file .env.test --profile test down
 
 run:
 	docker compose --env-file .env.dev --profile dev run --rm app-dev poetry run logic-fabricator

@@ -37,8 +37,29 @@ def mock_llm_parser(monkeypatch):
 @pytest.fixture
 def mock_mcp(monkeypatch):
     """
-    Mocks the MCP to prevent actual database connections.
+    Mocks the MCP and its underlying Neo4j driver to prevent actual database connections.
     """
+    class MockSession:
+        def run(self, *args, **kwargs):
+            return [] # Return empty list for queries
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    class MockDriver:
+        def session(self):
+            return MockSession()
+
+        def close(self):
+            pass
+
+    class MockGraphDatabase:
+        def driver(self, *args, **kwargs):
+            return MockDriver()
+
     class MockMCP:
         def __init__(self):
             pass
@@ -53,6 +74,7 @@ def mock_mcp(monkeypatch):
             return []
 
     monkeypatch.setattr("logic_fabricator.mcp.MCP", MockMCP)
+    monkeypatch.setattr("neo4j.GraphDatabase", MockGraphDatabase) # Mock the entire GraphDatabase object
 
 
 @pytest.mark.db
@@ -63,32 +85,32 @@ def test_history_command_prints_mcp_records(mock_llm_parser):
     # We need to import Workbench here because it's used in this test
     from logic_fabricator.workbench import Workbench
 
-    workbench = Workbench()
-    # Initialize the global belief system used by the handlers
-    workbench.handle_reset_command()
+    with Workbench() as workbench:
+        # Initialize the global belief system used by the handlers
+        workbench.handle_reset_command()
 
-    # Add a rule to ensure derived facts
-    from logic_fabricator.fabric import Rule, Condition, Statement
-    workbench.belief_system.rules.append(
-        Rule(
-            condition=Condition(verb="is", terms=["?x", "a_man"]),
-            consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+        # Add a rule to ensure derived facts
+        from logic_fabricator.fabric import Rule, Condition, Statement
+        workbench.belief_system.rules.append(
+            Rule(
+                condition=Condition(verb="is", terms=["?x", "a_man"]),
+                consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+            )
         )
-    )
 
-    # Run a simulation to create a history record
-    workbench.handle_sim_command("socrates is a man")
+        # Run a simulation to create a history record
+        workbench.handle_sim_command("socrates is a man")
 
-    output_capture = io.StringIO()
-    with redirect_stdout(output_capture):
-        workbench.handle_history_command()
+        output_capture = io.StringIO()
+        with redirect_stdout(output_capture):
+            workbench.handle_history_command()
 
-    output = output_capture.getvalue()
+        output = output_capture.getvalue()
 
-    # Assert that the output contains the string representation of the SimulationRecord
-    assert "--- History ---" in output
-    assert "SimulationRecord" in output
-    assert (
-        "initial_statements=[Statement(is ['Socrates', 'a_man'], neg=False, prio=1.0)]"
-        in output
-    )
+        # Assert that the output contains the string representation of the SimulationRecord
+        assert "--- History ---" in output
+        assert "SimulationRecord" in output
+        assert (
+            "initial_statements=[Statement(is ['Socrates', 'a_man'], neg=False, prio=1.0)]"
+            in output
+        )
