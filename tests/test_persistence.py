@@ -168,3 +168,32 @@ def test_mcp_simulate_persists_simulation(mcp_with_mock_adapter: MCP):
     mcp.simulate(belief_system_id, statements)
     assert len(mcp.db_adapter.simulations) == 1
     assert mcp.db_adapter.simulations[0].initial_statements == statements
+
+import uuid
+
+def test_statement_persistence_handles_all_attributes(db_adapter):
+    """
+    Tests that saving and loading a Statement preserves all its core attributes,
+    especially non-default ones like 'negated' and 'priority'.
+    """
+    
+
+    
+
+    original_statement = Statement(
+        verb="is",
+        terms=["sky", "blue"],
+        negated=True,
+        priority=0.8
+    )
+
+    # ACT
+    statement_id = db_adapter.save_statement(original_statement)
+    loaded_statement = db_adapter.load_statement(statement_id)
+
+    # ASSERT
+    assert loaded_statement is not None
+    assert loaded_statement.verb == original_statement.verb
+    assert loaded_statement.terms == original_statement.terms
+    assert loaded_statement.negated == original_statement.negated
+    assert loaded_statement.priority == original_statement.priority
