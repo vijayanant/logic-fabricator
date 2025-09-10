@@ -6,6 +6,7 @@ class MockAdapter(DatabaseAdapter):
         self.belief_systems = {}
         self.rules = {}
         self.simulations = []
+        self.statements = {}
 
     def create_belief_system(self, id: str, name: str, strategy: ForkingStrategy):
         self.belief_systems[id] = {"name": name, "strategy": strategy, "rules": []}
@@ -23,6 +24,15 @@ class MockAdapter(DatabaseAdapter):
 
     def get_simulation_history(self, belief_system_id: str) -> list[SimulationRecord]:
         return [sim for sim in self.simulations if sim.belief_system_id == belief_system_id]
+
+    def save_statement(self, statement: Statement) -> str:
+        import uuid
+        statement_id = str(uuid.uuid4())
+        self.statements[statement_id] = statement
+        return statement_id
+
+    def load_statement(self, statement_id: str) -> Statement | None:
+        return self.statements.get(statement_id)
 
     def close(self):
         pass

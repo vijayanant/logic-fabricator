@@ -73,9 +73,6 @@ class Neo4jAdapter(DatabaseAdapter):
             properties = {
                 "id": str(simulation_record.id),
                 "timestamp": time.time(),
-                "initial_statements": json.dumps([s.to_dict() for s in simulation_record.initial_statements]),
-                "derived_facts": json.dumps([s.to_dict() for s in simulation_record.derived_facts]),
-                "applied_rules": json.dumps([r.to_dict() for r in simulation_record.applied_rules]),
                 "forked_belief_system_id": str(simulation_record.forked_belief_system.id) if simulation_record.forked_belief_system else None,
             }
             session.run(
@@ -89,25 +86,53 @@ class Neo4jAdapter(DatabaseAdapter):
                 s_id=str(simulation_record.id),
             )
             for stmt in simulation_record.initial_statements:
-                self._persist_statement(session, stmt, str(simulation_record.id), self.REL_INTRODUCED)
+                stmt_id = self.save_statement(stmt)
+                session.run(
+                    f"MATCH (s:Simulation {{id: $s_id}}), (st:Statement {{id: $st_id}}) CREATE (s)-[:{self.REL_INTRODUCED}]->(st)",
+                    s_id=str(simulation_record.id),
+                    st_id=stmt_id,
+                )
             for stmt in simulation_record.derived_facts:
-                self._persist_statement(session, stmt, str(simulation_record.id), self.REL_DERIVED_FACT)
+                stmt_id = self.save_statement(stmt)
+                session.run(
+                    f"MATCH (s:Simulation {{id: $s_id}}), (st:Statement {{id: $st_id}}) CREATE (s)-[:{self.REL_DERIVED_FACT}]->(st)",
+                    s_id=str(simulation_record.id),
+                    st_id=stmt_id,
+                )
             for rule in simulation_record.applied_rules:
                 self._persist_rule(session, rule, str(simulation_record.id), self.REL_APPLIED_RULE)
         logger.info("Simulation orchestrated and persisted.", simulation_id=simulation_record.id, belief_system_id=belief_system_id)
 
-    def _persist_statement(self, session, statement: Statement, simulation_id: str, relationship_type: str):
-        stmt_id = str(uuid.uuid4())
-        session.run(
-            "MERGE (st:Statement {id: $id}) ON CREATE SET st.data_json = $data_json",
-            id=stmt_id,
-            data_json=json.dumps(statement.to_dict()),
-        )
-        session.run(
-            f"MATCH (s:Simulation {{id: $s_id}}), (st:Statement {{id: $st_id}}) CREATE (s)-[:{relationship_type}]->(st)",
-            s_id=simulation_id,
-            st_id=stmt_id,
-        )
+    def save_statement(self, statement: Statement) -> str:
+        with self._driver.session() as session:
+            stmt_id = str(uuid.uuid4())
+            properties = {
+                "id": stmt_id,
+                "verb": statement.verb,
+                "terms_json": json.dumps(statement.terms),
+                "negated": statement.negated,
+                "priority": statement.priority,
+            }
+            session.run(
+                "MERGE (st:Statement {id: $id}) SET st += $props",
+                id=stmt_id,
+                props=properties,
+            )
+            return stmt_id
+
+    def load_statement(self, statement_id: str) -> Statement | None:
+        with self._driver.session() as session:
+            result = session.run("MATCH (st:Statement {id: $id}) RETURN st", id=statement_id)
+            record = result.single()
+            if record:
+                node = record["st"]
+                return Statement(
+                    verb=node["verb"],
+                    terms=json.loads(node["terms_json"]),
+                    negated=node["negated"],
+                    priority=node["priority"],
+                )
+            return None
 
     def _persist_rule(self, session, rule: Rule, simulation_id: str, relationship_type: str):
         rule_id = str(uuid.uuid4())
@@ -131,15 +156,15 @@ class Neo4jAdapter(DatabaseAdapter):
             for record_node in result:
                 props = record_node["s"]
                 initial_statements_data = session.run(
-                    "MATCH (s:Simulation {id: $s_id})-[:INTRODUCED]->(st:Statement) RETURN st.data_json AS data",
+                    "MATCH (s:Simulation {id: $s_id})-[:INTRODUCED]->(st:Statement) RETURN st.id AS id",
                     s_id=props["id"],
                 ).data()
-                initial_statements = [Statement.from_dict(json.loads(v["data"])) for v in initial_statements_data]
+                initial_statements = [self.load_statement(v["id"]) for v in initial_statements_data]
                 derived_facts_data = session.run(
-                    "MATCH (s:Simulation {id: $s_id})-[:DERIVED_FACT]->(st:Statement) RETURN st.data_json AS data",
+                    "MATCH (s:Simulation {id: $s_id})-[:DERIVED_FACT]->(st:Statement) RETURN st.id AS id",
                     s_id=props["id"],
                 ).data()
-                derived_facts = [Statement.from_dict(json.loads(v["data"])) for v in derived_facts_data]
+                derived_facts = [self.load_statement(v["id"]) for v in derived_facts_data]
                 applied_rules_data = session.run(
                     "MATCH (s:Simulation {id: $s_id})-[:APPLIED_RULE]->(r:Rule) RETURN r.condition_json AS condition_data, r.consequences_json AS consequences_data",
                     s_id=props["id"],
