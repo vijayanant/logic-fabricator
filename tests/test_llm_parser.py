@@ -140,3 +140,33 @@ def test_llm_parser_handles_disjunctive_rule():
     parser = LLMParser()
     parsed_ir_rule = parser.parse_natural_language(natural_language_rule)
     assert parsed_ir_rule == expected_ir_rule
+
+
+@pytest.mark.llm
+def test_llm_parser_handles_universal_quantifier():
+    """
+    Tests that the LLMParser can parse a rule with a universal quantifier ('all')
+    into the IR structure.
+    """
+    natural_language_rule = "If all men are wise, then they are good."
+
+    expected_ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            operator='LEAF',
+            subject="men",
+            verb="are",
+            object="wise",
+            quantifier="ALL" # New field for quantifier
+        ),
+        consequence=IRStatement(
+            subject="they",
+            verb="are",
+            object="good"
+        )
+    )
+
+    parser = LLMParser()
+    parsed_ir_rule = parser.parse_natural_language(natural_language_rule)
+
+    assert parsed_ir_rule == expected_ir_rule

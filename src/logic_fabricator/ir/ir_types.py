@@ -9,7 +9,8 @@ class IRCondition(IRBase):
                  subject: Optional[str] = None, verb: Optional[str] = None, object: Optional[Union[str, List[str]]] = None,
                  negated: bool = False,
                  modifiers: Optional[List[str]] = None,
-                 exceptions: Optional[List['IRCondition']] = None):
+                 exceptions: Optional[List['IRCondition']] = None,
+                 quantifier: Optional[str] = None): # NEW FIELD
 
         self.operator = operator
         self.children = children if children is not None else []
@@ -19,6 +20,7 @@ class IRCondition(IRBase):
         self.negated = negated
         self.modifiers = modifiers if modifiers is not None else []
         self.exceptions = exceptions if exceptions is not None else []
+        self.quantifier = quantifier # NEW FIELD
 
     def __eq__(self, other):
         if not isinstance(other, IRCondition):
@@ -31,7 +33,8 @@ class IRCondition(IRBase):
                 self.negated == other.negated and
                 self.modifiers == other.modifiers and
                 self.exceptions == other.exceptions and
-                self.children == other.children)
+                self.children == other.children and
+                self.quantifier == other.quantifier) # NEW COMPARISON
 
     def __repr__(self):
         return f"IRCondition({self.__dict__})"
@@ -49,7 +52,8 @@ class IRCondition(IRBase):
             object=data.get('object'),
             negated=data.get('negated', False),
             modifiers=data.get('modifiers', []),
-            exceptions=exceptions
+            exceptions=exceptions,
+            quantifier=data.get('quantifier') # NEW FIELD
         )
 
 class IRStatement(IRBase):

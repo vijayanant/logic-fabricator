@@ -33,7 +33,8 @@
         "subject": {"type": "string", "description": "The subject of the condition. Use variable names like \"?x\" if present."},
         "verb": {"type": "string", "description": "The main verb of the condition."},
         "object": {"type": "string", "description": "The object of the condition. Use variable names like \"?y\" if present."},
-        "negated": {"type": "boolean", "default": false, "description": "True if the condition is negated (e.g., \"if not X\")."}
+        "negated": {"type": "boolean", "default": false, "description": "True if the condition is negated (e.g., \"if not X\")."},
+        "quantifier": {"type": "string", "enum": ["ALL", "SOME", "NONE"], "description": "The quantifier for the condition (e.g., ALL, SOME, NONE)."}
       },
       "required": ["operator", "subject", "verb", "object"]
     },
@@ -75,7 +76,7 @@
       "type": "object",
       "properties": {
         "rule_type": {"type": "string", "enum": ["standard", "effect"], "description": "The type of rule."},
-        "condition": { "$ref": "#/definitions/IRCondition", "description": "The condition of the rule."},
+        "condition": { "$ref": "#/definitions/IRCondition", "description": "The condition of the rule."}, 
         "consequence": {
           "oneOf": [
             { "$ref": "#/definitions/IRStatement" },
