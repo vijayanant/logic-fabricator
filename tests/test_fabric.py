@@ -1,9 +1,9 @@
-from logic_fabricator.fabric import (
+from logic_fabricator.core_types import (
     Statement,
     Rule,
     Condition,
-    ContradictionEngine,
     BeliefSystem,
+    ContradictionEngine,
     ContradictionRecord,
     ForkingStrategy,
     Effect,

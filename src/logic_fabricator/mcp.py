@@ -1,5 +1,5 @@
 import structlog
-from .fabric import (
+from .core_types import (
     BeliefSystem,
     Rule,
     Statement,

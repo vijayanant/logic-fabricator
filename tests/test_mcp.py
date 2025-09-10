@@ -1,6 +1,6 @@
 import pytest
 from logic_fabricator.mcp import MCP
-from logic_fabricator.fabric import ForkingStrategy, Rule, Condition, Statement
+from logic_fabricator.core_types import ForkingStrategy, Rule, Condition, Statement
 from .mocks import MockAdapter
 
 @pytest.fixture

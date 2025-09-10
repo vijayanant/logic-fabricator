@@ -2,7 +2,7 @@ import os
 import pytest
 from neo4j import GraphDatabase
 
-from logic_fabricator.fabric import Rule, Condition, Statement, SimulationRecord, ForkingStrategy
+from logic_fabricator.core_types import Rule, Condition, Statement, SimulationRecord, ForkingStrategy
 from logic_fabricator.neo4j_adapter import Neo4jAdapter
 from .mocks import MockAdapter
 
@@ -10,7 +10,7 @@ import os
 import pytest
 from neo4j import GraphDatabase
 
-from logic_fabricator.fabric import Rule, Condition, Statement, SimulationRecord, ForkingStrategy
+from logic_fabricator.core_types import Rule, Condition, Statement, SimulationRecord, ForkingStrategy
 from logic_fabricator.neo4j_adapter import Neo4jAdapter
 from .mocks import MockAdapter
 
