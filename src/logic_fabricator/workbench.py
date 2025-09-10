@@ -70,7 +70,8 @@ class Workbench:
 
             if isinstance(ir_object, IRRule):
                 new_rule = self.ir_translator.translate_ir_rule(ir_object)
-                self.belief_system.rules.append(new_rule)
+                for rule in new_rule:
+                    self.belief_system.rules.append(rule)
                 print(f"  ++ Fabricated Rule: {new_rule}")
             else:
                 print(
@@ -96,7 +97,8 @@ class Workbench:
 
             if isinstance(ir_object, IRRule) and ir_object.rule_type == "effect":
                 new_rule = self.ir_translator.translate_ir_rule(ir_object)
-                self.belief_system.rules.append(new_rule)
+                for rule in new_rule:
+                    self.belief_system.rules.append(rule)
                 print(f"  ++ Fabricated Effect Rule: {new_rule}")
             else:
                 print(

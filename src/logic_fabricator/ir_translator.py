@@ -1,10 +1,11 @@
-import structlog # Added structlog import
+import structlog
 from logic_fabricator.ir.ir_types import IRRule, IRCondition, IRStatement, IREffect
 from logic_fabricator.fabric import Rule, Condition, Statement, Effect
 from typing import Union, List
 from logic_fabricator.exceptions import UnsupportedIRFeatureError
+import itertools
 
-logger = structlog.get_logger(__name__) # Added logger instance
+logger = structlog.get_logger(__name__)
 
 class IRTranslator:
     """Translates Intermediate Representation (IR) objects into fabric.py runtime types."""
@@ -26,60 +27,6 @@ class IRTranslator:
         logger.debug("IRStatement translated", statement=translated_statement)
         return translated_statement
 
-    def translate_ir_condition(self, ir_condition: IRCondition) -> Condition:
-        logger.info("Translating IRCondition", ir_condition=ir_condition)
-        if ir_condition.exceptions:
-            logger.error("Unsupported feature: IRCondition with exceptions.", ir_condition=ir_condition)
-            raise UnsupportedIRFeatureError("IRCondition with exceptions is not currently supported by fabric.Condition.")
-
-        if ir_condition.conjunctive_conditions:
-            logger.info("Translating conjunctive IRCondition", ir_condition=ir_condition)
-            # Create the Condition for the main part of the ir_condition
-            main_condition_terms = [ir_condition.subject]
-            if isinstance(ir_condition.object, list):
-                main_condition_terms.extend(ir_condition.object)
-            else:
-                main_condition_terms.append(ir_condition.object)
-
-            main_fabric_condition = Condition(
-                verb=ir_condition.verb,
-                terms=main_condition_terms,
-            )
-
-            # Translate the conjunctive conditions recursively
-            translated_conjunctive_conditions = [
-                self.translate_ir_condition(sub_cond)
-                for sub_cond in ir_condition.conjunctive_conditions
-            ]
-
-            # Combine all conditions into the and_conditions list
-            all_and_conditions = [main_fabric_condition] + translated_conjunctive_conditions
-
-            translated_condition = Condition(
-                and_conditions=all_and_conditions,
-                verb=None,  # Not applicable for conjunctive conditions
-                terms=None  # Not applicable for conjunctive conditions
-            )
-            logger.debug("Conjunctive IRCondition translated", condition=translated_condition)
-            return translated_condition
-        else:
-            logger.info("Translating simple IRCondition", ir_condition=ir_condition)
-            # Handle simple conditions
-            terms = [ir_condition.subject]
-            if isinstance(ir_condition.object, list):
-                terms.extend(ir_condition.object)
-            else:
-                terms.append(ir_condition.object)
-
-            translated_condition = Condition(
-                verb=ir_condition.verb,
-                terms=terms,
-                and_conditions=None, # Not applicable for simple conditions
-                verb_synonyms=None # Not in IR for now
-            )
-            logger.debug("Simple IRCondition translated", condition=translated_condition)
-            return translated_condition
-
     def translate_ir_effect(self, ir_effect: IREffect) -> Effect:
         logger.info("Translating IREffect", ir_effect=ir_effect)
         translated_effect = Effect(
@@ -91,21 +38,80 @@ class IRTranslator:
         logger.debug("IREffect translated", effect=translated_effect)
         return translated_effect
 
-    def translate_ir_rule(self, ir_rule: IRRule) -> Rule:
+    def _translate_leaf_condition(self, ir_condition: IRCondition) -> Condition:
+        """Translates a single, non-recursive LEAF IRCondition."""
+        logger.info("Translating LEAF IRCondition", ir_condition=ir_condition)
+        terms = [ir_condition.subject]
+        if isinstance(ir_condition.object, list):
+            terms.extend(ir_condition.object)
+        else:
+            terms.append(ir_condition.object)
+        return Condition(verb=ir_condition.verb, terms=terms)
+
+    def _decompose_condition(self, ir_condition: IRCondition) -> List[List[Condition]]:
+        """
+        Recursively decomposes a complex IRCondition into a list of simple conjunctive groups.
+        This is the Disjunctive Normal Form (DNF).
+        Example: (A AND (B OR C)) -> [[A, B], [A, C]]
+        """
+        if ir_condition.operator == 'LEAF':
+            return [[self._translate_leaf_condition(ir_condition)]]
+
+        if ir_condition.operator == 'OR':
+            # For OR, we collect all the decomposed groups from our children.
+            # (A OR B) -> [[A], [B]]
+            all_decomposed_groups = []
+            for child in ir_condition.children:
+                all_decomposed_groups.extend(self._decompose_condition(child))
+            return all_decomposed_groups
+
+        if ir_condition.operator == 'AND':
+            # For AND, we need the cartesian product of the decomposed groups of our children.
+            # (A AND B) where A -> [[A1]] and B -> [[B1], [B2]]
+            # results in [[A1, B1], [A1, B2]]
+            child_decompositions = [self._decompose_condition(child) for child in ir_condition.children]
+            
+            product_of_decompositions = list(itertools.product(*child_decompositions))
+            
+            combined_groups = []
+            for combo in product_of_decompositions:
+                flattened_group = [condition for group in combo for condition in group]
+                combined_groups.append(flattened_group)
+            return combined_groups
+
+        # This handles the legacy IRCondition format
+        if ir_condition.conjunctive_conditions:
+            main_cond = self._translate_leaf_condition(ir_condition)
+            child_conds = [self._translate_leaf_condition(c) for c in ir_condition.conjunctive_conditions]
+            return [[main_cond] + child_conds]
+        else:
+            return [[self._translate_leaf_condition(ir_condition)]]
+
+
+    def translate_ir_rule(self, ir_rule: IRRule) -> List[Rule]:
         logger.info("Translating IRRule", ir_rule=ir_rule)
-        translated_condition = self.translate_ir_condition(ir_rule.condition)
 
         if isinstance(ir_rule.consequence, IRStatement):
             translated_consequence = self.translate_ir_statement(ir_rule.consequence)
         elif isinstance(ir_rule.consequence, IREffect):
             translated_consequence = self.translate_ir_effect(ir_rule.consequence)
         else:
-            logger.error("Unknown IR consequence type", ir_consequence_type=type(ir_rule.consequence))
             raise ValueError(f"Unknown IR consequence type: {type(ir_rule.consequence)}")
 
-        translated_rule = Rule(
-            condition=translated_condition,
-            consequences=[translated_consequence]
-        )
-        logger.debug("IRRule translated", rule=translated_rule)
-        return translated_rule
+        decomposed_and_groups = self._decompose_condition(ir_rule.condition)
+
+        translated_rules = []
+        for group in decomposed_and_groups:
+            if len(group) > 1:
+                final_condition = Condition(and_conditions=group)
+            else:
+                final_condition = group[0]
+
+            rule = Rule(
+                condition=final_condition,
+                consequences=[translated_consequence]
+            )
+            translated_rules.append(rule)
+        
+        logger.debug("IRRule translated into multiple rules", count=len(translated_rules))
+        return translated_rules

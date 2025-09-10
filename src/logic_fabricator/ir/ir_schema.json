@@ -20,61 +20,62 @@
   "required": ["input_type", "data"],
   "definitions": {
     "IRCondition": {
+      "description": "A condition can be a simple leaf (a statement) or a complex branch (a logical combination of other conditions).",
+      "oneOf": [
+        { "$ref": "#/definitions/IRLeafCondition" },
+        { "$ref": "#/definitions/IRBranchCondition" }
+      ]
+    },
+    "IRLeafCondition": {
       "type": "object",
       "properties": {
-        "subject": { "type": "string", "description": "The subject of the condition. Use variable names like \"?x\" if present." },
-        "verb": { "type": "string", "description": "The main verb of the condition." },
-        "object": { "type": "string", "description": "The object of the condition. Use variable names like \"?y\" if present." },
-        "negated": { "type": "boolean", "default": false, "description": "True if the condition is negated (e.g., \"if not X\")." },
-        "modifiers": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Any adverbs or adjectives modifying the condition (e.g., \"always\", \"rarely\")." },
-        "conjunctive_conditions": {
+        "operator": {"type": "string", "const": "LEAF"},
+        "subject": {"type": "string", "description": "The subject of the condition. Use variable names like \"?x\" if present."},
+        "verb": {"type": "string", "description": "The main verb of the condition."},
+        "object": {"type": "string", "description": "The object of the condition. Use variable names like \"?y\" if present."},
+        "negated": {"type": "boolean", "default": false, "description": "True if the condition is negated (e.g., \"if not X\")."}
+      },
+      "required": ["operator", "subject", "verb", "object"]
+    },
+    "IRBranchCondition": {
+      "type": "object",
+      "properties": {
+        "operator": {"type": "string", "enum": ["AND", "OR"]},
+        "children": {
           "type": "array",
           "items": { "$ref": "#/definitions/IRCondition" },
-          "default": [],
-          "description": "Array of IRCondition objects for \"AND\" logic. Each part of an \"AND\" clause should be a separate IRCondition object within this array."
-        },
-        "disjunctive_conditions": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/IRCondition" },
-          "default": [],
-          "description": "Array of IRCondition objects for \"OR\" logic. Each part of an \"OR\" clause should be a separate IRCondition object within this array."
-        },
-        "exceptions": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/IRCondition" },
-          "default": [],
-          "description": "Array of IRCondition objects for \"unless\" clauses."
+          "description": "An array of sub-conditions that are combined by the operator."
         }
       },
-      "required": ["subject", "verb", "object"]
+      "required": ["operator", "children"]
     },
     "IRStatement": {
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "statement", "description": "Discriminator for IRStatement." },
-        "subject": { "type": "string", "description": "The subject of the statement." },
-        "verb": { "type": "string", "description": "The main verb of the statement." },
-        "object": { "type": "string", "description": "The object of the statement." },
-        "negated": { "type": "boolean", "default": false, "description": "True if the statement is negated." },
-        "modifiers": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Any adverbs or adjectives modifying the statement." }
+        "type": {"type": "string", "const": "statement", "description": "Discriminator for IRStatement."},
+        "subject": {"type": "string", "description": "The subject of the statement."},
+        "verb": {"type": "string", "description": "The main verb of the statement."},
+        "object": {"type": "string", "description": "The object of the statement."},
+        "negated": {"type": "boolean", "default": false, "description": "True if the statement is negated."},
+        "modifiers": {"type": "array", "items": {"type": "string"}, "default": [], "description": "Any adverbs or adjectives modifying the statement."}
       },
       "required": ["type", "subject", "verb", "object"]
     },
     "IREffect": {
       "type": "object",
       "properties": {
-        "type": { "type": "string", "const": "effect", "description": "Discriminator for IREffect." },
-        "target_world_state_key": { "type": "string", "description": "The key in the world state to modify (e.g., \"population\", \"light\")." },
-        "effect_operation": { "type": "string", "description": "The operation to perform (e.g., \"increment\", \"set\", \"decrement\")." },
-        "effect_value": { "type": ["string", "number", "boolean", "object", "array"], "description": "The value for the operation." }
+        "type": {"type": "string", "const": "effect", "description": "Discriminator for IREffect."},
+        "target_world_state_key": {"type": "string", "description": "The key in the world state to modify (e.g., \"population\", \"light\")."},
+        "effect_operation": {"type": "string", "description": "The operation to perform (e.g., \"increment\", \"set\", \"decrement\")."},
+        "effect_value": {"type": ["string", "number", "boolean", "object", "array"], "description": "The value for the operation."}
       },
       "required": ["type", "target_world_state_key", "effect_operation", "effect_value"]
     },
     "IRRule": {
       "type": "object",
       "properties": {
-        "rule_type": { "type": "string", "enum": ["standard", "effect"], "description": "The type of rule." },
-        "condition": { "$ref": "#/definitions/IRCondition", "description": "The condition of the rule." },
+        "rule_type": {"type": "string", "enum": ["standard", "effect"], "description": "The type of rule."},
+        "condition": { "$ref": "#/definitions/IRCondition", "description": "The condition of the rule."},
         "consequence": {
           "oneOf": [
             { "$ref": "#/definitions/IRStatement" },

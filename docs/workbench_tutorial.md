@@ -19,6 +19,7 @@ First, we must teach our world about mortality. We speak the rule in natural lan
 >> rule if ?x is a man then ?x is mortal
 ++ Fabricated Rule: Rule: IF (?x is a man) THEN ((is ?x mortal))
 ```
+
 We have just created a new law of nature. The `?x` is a variable, a placeholder for any term that fits the pattern.
 
 **Step 2: Introduce a Fact**
@@ -33,6 +34,7 @@ Now, let's introduce a subject to our world with the `sim` command.
      - (is socrates mortal)
   >> World state is unchanged.
 ```
+
 The engine took our initial fact (`sim`), applied our rule, and **inferred a new fact**: Socrates is mortal. A new truth has been derived.
 
 ## 2. The Art of Consequence: Chaining & Effects
@@ -67,6 +69,7 @@ Now, when we introduce a single fact, we can see the chain reaction.
   >> World State Changes:
      - mortal_count: None -> 1
 ```
+
 This is **inference chaining** in action. The engine took the initial fact (`socrates is a man`), applied the first rule to derive the *new* fact `(is socrates mortal)`, and then immediately used that new fact to apply the second rule, all in one simulation cycle. The "Derived Facts" in the report correctly shows the new statement that was added to the belief system during this simulation.
 
 ## 3. Advanced Fabrication: The Nuances of Rules
@@ -117,26 +120,87 @@ You can create rules that only fire if multiple conditions are met.
 >> rule if ?x is a king and ?x is wise then ?x is a good_ruler
 ++ Fabricated Rule: Rule: IF ((?x is a king) & (?x is wise)) THEN ((?x is a good_ruler))
 
->> sim arthur is a king
-... Simulating: is arthur is a king
+>> sim Raja Raja Chola is a king
+... Simulating: is Raja Raja Chola is a king
 --- Simulation Report ---
   >> No new facts were derived.
   >> World state is unchanged.
 
->> sim arthur is wise
-... Simulating: is arthur is wise
+>> sim Raja Raja Chola is wise
+... Simulating: is Raja Raja Chola is wise
 --- Simulation Report ---
   >> Derived Facts:
-     - (arthur is a good_ruler)
+     - (Raja Raja Chola is a good_ruler)
   >> World state is unchanged.
 ```
-Notice the rule did not fire until both facts, "arthur is a king" and "arthur is wise", were present in the belief system.
+
+Notice the rule did not fire until both facts, "Raja Raja Chola is a king" and "Raja Raja Chola is wise", were present in the belief system.
+
+### Disjunctive Conditions (OR)
+
+What happens when a condition can be satisfied in multiple ways? Our engine now understands "OR" logic, allowing you to define rules that fire if *any* of several sub-conditions are met. The engine will automatically decompose such a rule into simpler, equivalent rules behind the scenes.
+
+Let's use the example we've been fabricating:
+
+```
+>> rule if ?x is a king and (?x is wise or ?x is brave), then ?x is a good_ruler
+++ Fabricated Rule: Rule: IF ((is ?x king) & (is ?x wise)) THEN ((is ?x good_ruler))
+++ Fabricated Rule: Rule: IF ((is ?x king) & (is ?x brave)) THEN ((is ?x good_ruler))
+```
+
+Notice that the single rule you entered was decomposed into two distinct rules. This is the `IRTranslator` at work, ensuring the core engine only deals with simpler, conjunctive conditions.
+
+Now, let's simulate to see it in action:
+
+```
+>> sim Vikramaditya is a king
+... Simulating: is Vikramaditya king
+--- Simulation Report ---
+  >> No new facts were derived.
+  >> World state is unchanged.
+
+>> sim Vikramaditya is wise
+... Simulating: is Vikramaditya wise
+--- Simulation Report ---
+  >> Derived Facts:
+     - (is Vikramaditya good_ruler)
+      >> World state is unchanged.
+```
+
+Here, `Vikramaditya is a king` and `Vikramaditya is wise` together triggered the first decomposed rule, leading to `Vikramaditya is a good_ruler`.
+
+Let's try the other path:
+
+```
+>> reset
+Purging reality. A new belief system is born.
+
+>> rule if ?x is a king and (?x is wise or ?x is brave), then ?x is a good_ruler
+++ Fabricated Rule: Rule: IF ((is ?x king) & (is ?x wise)) THEN ((is ?x good_ruler))
+++ Fabricated Rule: Rule: IF ((is ?x king) & (is ?x brave)) THEN ((is ?x good_ruler))
+
+>> sim Vikramaditya is a king
+... Simulating: is Vikramaditya king
+--- Simulation Report ---
+  >> No new facts were derived.
+  >> World state is unchanged.
+
+>> sim Vikramaditya is brave
+... Simulating: is Vikramaditya brave
+--- Simulation Report ---
+  >> Derived Facts:
+     - (is Vikramaditya good_ruler)
+      >> World state is unchanged.
+```
+
+As you can see, `Vikramaditya is brave` also successfully triggered the rule, demonstrating the "OR" logic. The engine doesn't care which path led to the truth, only that a path exists.
 
 ## 4. Embracing Paradox: The Art of the Fork
 
 What happens when logic disagrees with itself? In our world, this is not an error. It is a creative event.
 
 **Step 1: Establish a Fact**
+
 ```
 >> sim the sky is blue
 ... Simulating: the sky is blue
@@ -144,9 +208,11 @@ What happens when logic disagrees with itself? In our world, this is not an erro
   >> No new facts were derived.
   >> World state is unchanged.
 ```
+
 The belief system now holds that "the sky is blue" is true.
 
 **Step 2: Introduce a Contradiction**
+
 ```
 >> sim the sky is not blue
 
@@ -158,11 +224,13 @@ The belief system now holds that "the sky is blue" is true.
   >> No new facts were derived.
   >> World state is unchanged.
 ```
+
 A contradiction! The workbench immediately notifies us that reality has forked. Our session has now moved into the *new* reality, which, by default, contains **both** beliefs ("the sky is blue" and "the sky is not blue"). This is the `coexist` strategy in action.
 
 ## 5. The Inspector's Tools
 
 As you build your world, don't forget the tools at your disposal:
+
 - `rules`: See the laws of your current reality.
 - `statements`: See the set of established facts.
 - `state`: Inspect the `world_state` you have shaped with effects.
@@ -177,6 +245,7 @@ You may eventually notice that rules are not triggered by changes in the `world_
 So, how do we make the world "speak" back to the logic engine? We use the **Dual Consequence Pattern**. A rule that needs to be observable should have two consequences: one `Effect` to change the world, and one `Statement` to announce that change to the logical world.
 
 Let's demonstrate. `reset` the workbench, then:
+
 ```
 >> rule if the bell rings then set the light to on
 ++ Fabricated Rule: Rule: IF (the bell rings) THEN (Effect: set world_state.light to on)
@@ -190,9 +259,11 @@ Let's demonstrate. `reset` the workbench, then:
   >> World State Changes:
      - light: None -> on
 ```
+
 Notice the `world_state` changed, but the fact `(the people are awake)` was not derived. The second rule never saw the change.
 
 Now, let's add the "speaking" part of the pattern.
+
 ```
 >> rule if the bell rings then the light is on
 ++ Fabricated Rule: Rule: IF (the bell rings) THEN ((the light is on))
@@ -205,6 +276,7 @@ Now, let's add the "speaking" part of the pattern.
   >> World State Changes:
      - light: None -> on
 ```
+
 Success! By adding a rule that created the `(the light is on)` statement, we made the change visible to the logic engine, which then allowed our second rule to fire. This pattern is key to building complex, reactive worlds.
 
 ---

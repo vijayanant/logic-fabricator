@@ -5,44 +5,51 @@ class IRBase:
     pass
 
 class IRCondition(IRBase):
-    def __init__(self, subject: str, verb: str, object: Union[str, List[str]], negated: bool = False,
+    def __init__(self, operator: str = 'LEAF', children: Optional[List['IRCondition']] = None,
+                 subject: Optional[str] = None, verb: Optional[str] = None, object: Optional[Union[str, List[str]]] = None,
+                 negated: bool = False,
                  modifiers: Optional[List[str]] = None,
-                 conjunctive_conditions: Optional[List['IRCondition']] = None,
                  exceptions: Optional[List['IRCondition']] = None):
+
+        self.operator = operator
+        self.children = children if children is not None else []
         self.subject = subject
         self.verb = verb
         self.object = object
         self.negated = negated
         self.modifiers = modifiers if modifiers is not None else []
-        self.conjunctive_conditions = conjunctive_conditions if conjunctive_conditions is not None else []
         self.exceptions = exceptions if exceptions is not None else []
 
     def __eq__(self, other):
         if not isinstance(other, IRCondition):
             return NotImplemented
-        return (self.subject == other.subject and
+        
+        return (self.operator == other.operator and
+                self.subject == other.subject and
                 self.verb == other.verb and
                 self.object == other.object and
                 self.negated == other.negated and
                 self.modifiers == other.modifiers and
-                self.conjunctive_conditions == other.conjunctive_conditions and
-                self.exceptions == other.exceptions)
+                self.exceptions == other.exceptions and
+                self.children == other.children)
 
     def __repr__(self):
-        return (f"IRCondition(subject='{self.subject}', verb='{self.verb}', object={self.object}, "
-                f"negated={self.negated}, modifiers={self.modifiers}, "
-                f"conjunctive_conditions={self.conjunctive_conditions}, exceptions={self.exceptions})")
+        return f"IRCondition({self.__dict__})"
 
     @classmethod
     def from_dict(cls, data: dict) -> 'IRCondition':
+        children = [cls.from_dict(c) for c in data.get('children', [])]
+        exceptions = [cls.from_dict(e) for e in data.get('exceptions', [])]
+        
         return cls(
-            subject=data["subject"],
-            verb=data["verb"],
-            object=data["object"],
-            negated=data.get("negated", False),
-            modifiers=data.get("modifiers", []),
-            conjunctive_conditions=[IRCondition.from_dict(cc) for cc in data.get("conjunctive_conditions", [])],
-            exceptions=[IRCondition.from_dict(exc) for exc in data.get("exceptions", [])]
+            operator=data.get('operator', 'LEAF'), # Default to LEAF
+            children=children,
+            subject=data.get('subject'),
+            verb=data.get('verb'),
+            object=data.get('object'),
+            negated=data.get('negated', False),
+            modifiers=data.get('modifiers', []),
+            exceptions=exceptions
         )
 
 class IRStatement(IRBase):

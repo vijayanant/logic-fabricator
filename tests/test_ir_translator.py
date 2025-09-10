@@ -25,27 +25,6 @@ def test_translate_simple_ir_statement():
 
     assert translated_statement == expected_statement
 
-def test_translate_simple_ir_condition():
-    """Tests that IRTranslator can translate a simple IRCondition to a fabric.Condition."""
-    ir_condition = IRCondition(
-        subject="?x",
-        verb="is",
-        object="a_man",
-        negated=False,
-        modifiers=[],
-        conjunctive_conditions=[],
-        exceptions=[]
-    )
-    expected_condition = Condition(
-        verb="is",
-        terms=["?x", "a_man"]
-    )
-
-    translator = IRTranslator()
-    translated_condition = translator.translate_ir_condition(ir_condition)
-
-    assert translated_condition == expected_condition
-
 def test_translate_ir_effect():
     """Tests that IRTranslator can translate an IREffect to a fabric.Effect."""
     ir_effect = IREffect(
@@ -69,7 +48,7 @@ def test_translate_ir_rule():
     """Tests that IRTranslator can translate a simple IRRule to a fabric.Rule."""
     ir_rule = IRRule(
         rule_type="standard",
-        condition=IRCondition(subject="?x", verb="is", object="a_man"),
+        condition=IRCondition(operator='LEAF', subject="?x", verb="is", object="a_man"),
         consequence=IRStatement(subject="?x", verb="is", object="mortal")
     )
     expected_rule = Rule(
@@ -80,48 +59,57 @@ def test_translate_ir_rule():
     translator = IRTranslator()
     translated_rule = translator.translate_ir_rule(ir_rule)
 
-    assert translated_rule == expected_rule
+    assert translated_rule == [expected_rule]
 
-def test_translate_ir_condition_with_conjunctive_conditions():
-    """Tests that IRTranslator can translate an IRCondition with conjunctive_conditions to a fabric.Condition with and_conditions."""
-    ir_condition = IRCondition(
-        subject="?x",
-        verb="is",
-        object="a_man",
-        negated=False,
-        modifiers=[],
-        conjunctive_conditions=[
-            IRCondition(subject="?x", verb="is", object="wise", negated=False, modifiers=[], conjunctive_conditions=[], exceptions=[])
-        ],
-        exceptions=[]
+def test_translate_ir_rule_with_disjunctive_condition():
+    """
+    Tests that the IRTranslator can decompose a complex IRCondition with
+    disjunctive ('OR') logic into multiple fabric.Rule objects.
+    """
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            operator='AND',
+            children=[
+                IRCondition(
+                    operator='LEAF', 
+                    subject="?x", verb="is", object="a_king"
+                ),
+                IRCondition(
+                    operator='OR',
+                    children=[
+                        IRCondition(operator='LEAF', subject="?x", verb="is", object="wise"),
+                        IRCondition(operator='LEAF', subject="?x", verb="is", object="brave"),
+                    ]
+                )
+            ]
+        ),
+        consequence=IRStatement(subject="?x", verb="is", object="a_good_ruler")
     )
-    expected_condition = Condition(
-        and_conditions=[
-            Condition(verb="is", terms=["?x", "a_man"]),
-            Condition(verb="is", terms=["?x", "wise"])
-        ]
+
+    expected_rule1 = Rule(
+        condition=Condition(
+            and_conditions=[
+                Condition(verb="is", terms=["?x", "a_king"]),
+                Condition(verb="is", terms=["?x", "wise"]),
+            ]
+        ),
+        consequences=[Statement(verb="is", terms=["?x", "a_good_ruler"])]
+    )
+    expected_rule2 = Rule(
+        condition=Condition(
+            and_conditions=[
+                Condition(verb="is", terms=["?x", "a_king"]),
+                Condition(verb="is", terms=["?x", "brave"]),
+            ]
+        ),
+        consequences=[Statement(verb="is", terms=["?x", "a_good_ruler"])]
     )
 
     translator = IRTranslator()
-    translated_condition = translator.translate_ir_condition(ir_condition)
 
-    assert translated_condition == expected_condition
-
-def test_translate_ir_condition_with_exceptions():
-    """Tests that IRTranslator raises UnsupportedIRFeatureError for IRCondition with exceptions."""
-    ir_condition_with_exceptions = IRCondition(
-        subject="Alice",
-        verb="trusts",
-        object="Ravi",
-        negated=False,
-        modifiers=[],
-        conjunctive_conditions=[],
-        exceptions=[
-            IRCondition(subject="Ravi", verb="lies", object="", negated=False, modifiers=[], conjunctive_conditions=[], exceptions=[])
-        ]
-    )
-
-    translator = IRTranslator()
-    with pytest.raises(UnsupportedIRFeatureError) as excinfo:
-        translator.translate_ir_condition(ir_condition_with_exceptions)
-    assert "IRCondition with exceptions is not currently supported" in str(excinfo.value)
+    translated_rules = translator.translate_ir_rule(ir_rule)
+    
+    assert len(translated_rules) == 2
+    assert expected_rule1 in translated_rules
+    assert expected_rule2 in translated_rules

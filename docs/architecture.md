@@ -69,8 +69,8 @@ All while keeping it fun, transparent, and user-driven.
 ### 7. **Intermediate Representation (IR) & Translator**
 
 To decouple the creative, non-deterministic output of the LLM from the core logic engine, we use an Intermediate Representation.
-- **IR Objects:** Simple, structured data classes (`IRRule`, `IRStatement`) that represent the *intent* of the user's natural language, as parsed by the LLM.
-- **Translator:** A deterministic component that translates the IR objects into the concrete `Rule`, `Statement`, and `Effect` objects that the `Simulation Engine` uses.
+- **IR Objects:** These are the blueprints for our logic. An `IRCondition` can now be a simple **Leaf** (a direct statement like "X is a man") or a complex **Branch** (combining other conditions with `AND` or `OR` operators). This recursive structure allows us to capture the nuanced intent of natural language.
+- **Translator:** This deterministic component takes the potentially complex, nested `IR` objects and meticulously translates them into the simpler, flat `Rule`, `Statement`, and `Effect` objects that the `Simulation Engine` understands. Crucially, it's here that complex `OR` conditions are decomposed into multiple, simpler rules, ensuring the core engine remains focused and efficient.
 
 This two-step process allows us to change LLM providers or parsing strategies without having to refactor the core logic engine.
 
@@ -102,7 +102,7 @@ graph TD
 ## ⏳ Current Scope (MVP)
 
 - ✅ Parse Rule and Statement into simple objects
-- ✅ Advanced Rule Matching (multi-variable, wildcard, conjunctive conditions)
+- ✅ Advanced Rule Matching (multi-variable, wildcard, conjunctive AND, and disjunctive OR conditions)
 - ✅ Follow TDD for every evolution step
 - ✅ Decoupled Simulation Engine
 - ✅ Support contradictions and forks
