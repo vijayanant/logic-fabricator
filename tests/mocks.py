@@ -1,5 +1,5 @@
 from logic_fabricator.db_adapter import DatabaseAdapter
-from logic_fabricator.fabric import Rule, Statement, ForkingStrategy, SimulationRecord
+from logic_fabricator.core_types import Rule, Statement, ForkingStrategy, SimulationRecord
 
 class MockAdapter(DatabaseAdapter):
     def __init__(self):

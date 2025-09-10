@@ -5,7 +5,7 @@ import uuid
 import json
 import structlog
 from neo4j import GraphDatabase
-from .fabric import Rule, Statement, ForkingStrategy, SimulationRecord
+from .core_types import Rule, Statement, ForkingStrategy, SimulationRecord
 from .db_adapter import DatabaseAdapter
 
 logger = structlog.get_logger(__name__)

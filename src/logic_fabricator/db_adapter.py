@@ -1,6 +1,6 @@
 
 from typing import Protocol
-from .fabric import Rule, Statement, ForkingStrategy, SimulationRecord
+from .core_types import Rule, Statement, ForkingStrategy, SimulationRecord
 
 class DatabaseAdapter(Protocol):
     """

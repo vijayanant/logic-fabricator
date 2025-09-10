@@ -1,10 +1,6 @@
 import structlog
 from .config import configure_logging  # Import the logging configuration function
-from .fabric import (
-    BeliefSystem,
-    ContradictionEngine,
-    Statement,
-)
+from .core_types import BeliefSystem, ContradictionEngine, Statement
 from .llm_parser import LLMParser
 from .ir_translator import IRTranslator
 from .ir.ir_types import IRRule, IRStatement
