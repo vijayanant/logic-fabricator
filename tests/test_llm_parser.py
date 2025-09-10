@@ -11,7 +11,7 @@ def test_parses_simple_rule_to_ir():
     natural_language_rule = "if ?x is a man, then ?x is mortal"
 
     # The structured IR object we expect the parser to produce
-    expected_ir_condition = IRCondition(subject="?x", verb="is", object="a_man")
+    expected_ir_condition = IRCondition(subject="?x", verb="is", object="man")
     expected_ir_consequence = IRStatement(subject="?x", verb="is", object="mortal")
     expected_ir_rule = IRRule(
         rule_type="standard",

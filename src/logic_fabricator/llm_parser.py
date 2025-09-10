@@ -7,6 +7,7 @@ import structlog  # Added structlog import
 from typing import Union
 from .ir.ir_types import IRRule, IRCondition, IREffect, IRStatement
 from .config import Config, load_config
+from jsonschema import validate, ValidationError
 
 logger = structlog.get_logger(__name__)  # Added logger instance
 
@@ -27,6 +28,11 @@ class LLMParser:
         )
         with open(prompt_file_path, "r") as f:
             self.system_prompt = f.read()
+
+        # Load the IR JSON schema
+        schema_file_path = Path(__file__).parent / "ir" / "ir_schema.json"
+        with open(schema_file_path, "r") as f:
+            self.ir_schema = json.load(f)
 
     def _parse_ir_condition(self, data: dict) -> IRCondition:
         return IRCondition(
@@ -60,36 +66,77 @@ class LLMParser:
             effect_value=data["effect_value"],
         )
 
-    def parse_natural_language(self, text: str) -> Union[IRRule, IRStatement, None]:
+    def parse_natural_language(
+        self, text: str, max_retries: int = 3
+    ) -> Union[IRRule, IRStatement, None]:
         """
         Parses any natural language input and returns the appropriate IR object.
         The LLM will determine the type of input.
         """
-        try:
-            response = self.client.chat.completions.create(
-                model=self.config.llm_model,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": text},
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.1,
-            )
+        system_message_content = f"{self.system_prompt}\n\nYour response MUST be a JSON object that conforms to the following schema:\n```json\n{json.dumps(self.ir_schema, indent=2)}```"
 
-            json_response = response.choices[0].message.content
-            data = json.loads(json_response)
+        for attempt in range(max_retries):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.config.llm_model,
+                    messages=[
+                        {"role": "system", "content": system_message_content},
+                        {"role": "user", "content": text},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.1,
+                )
 
-            input_type = data.get("input_type")
-            ir_data = data.get("data")
+                json_response = response.choices[0].message.content
+                data = json.loads(json_response)
 
-            if input_type == "rule":
-                return IRRule.from_dict(ir_data)
-            elif input_type == "statement":
-                return IRStatement.from_dict(ir_data)
-            # Add more types (e.g., "question") here in the future
-            else:
-                raise ValueError(f"Unknown input type: {input_type}")
+                # --- JSON Schema Validation ---
+                try:
+                    validate(instance=data, schema=self.ir_schema)
+                    logger.debug("LLM response validated against schema.")
+                except ValidationError as e:
+                    logger.warning(
+                        f"LLM response failed schema validation (attempt {attempt + 1}/{max_retries}): {e.message}"
+                    )
+                    if attempt == max_retries - 1:
+                        logger.error(
+                            "LLM failed schema validation after multiple retries.",
+                            error=str(e),
+                        )
+                        return None
+                    continue  # Retry if validation fails
+                # --- End JSON Schema Validation ---
 
-        except Exception as e:
-            logger.error("LLM parsing error", error=str(e))
-            return None
+                input_type = data.get("input_type")
+                ir_data = data.get("data")
+
+                if input_type == "rule":
+                    return IRRule.from_dict(ir_data)
+                elif input_type == "statement":
+                    # Post-processing: If 'object' is a single-item list, extract the item.
+                    if (
+                        isinstance(ir_data.get("object"), list)
+                        and len(ir_data["object"]) == 1
+                    ):
+                        ir_data["object"] = ir_data["object"][0]
+                    return IRStatement.from_dict(ir_data)
+                # Add more types (e.g., "question") here in the future
+                else:
+                    raise ValueError(f"Unknown input type: {input_type}")
+
+            except json.JSONDecodeError as e:
+                logger.warning(
+                    f"LLM returned malformed JSON (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                if attempt == max_retries - 1:
+                    logger.error(
+                        "LLM failed to return valid JSON after multiple retries.",
+                        error=str(e),
+                    )
+                    return None
+                continue  # Retry if malformed JSON
+
+            except Exception as e:
+                logger.error("LLM parsing error", error=str(e))
+                return None
+        return None  # Should not be reached if max_retries is > 0
