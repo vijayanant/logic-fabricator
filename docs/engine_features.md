@@ -34,6 +34,10 @@ The engine's ability to match a `Rule` to a `Statement` is flexible and powerful
 - A rule's condition can be composed of a list of sub-conditions. For the rule to apply, the `BeliefSystem` must contain statements that match **all** of the sub-conditions. This allows for the creation of more specific and demanding rules.
   - *Example:* A rule can be defined to only trigger if `?x is a man` AND `?x is wise` are both true facts in the belief system.
 
+### Disjunctive Conditions (`OR`)
+- A rule's condition can also incorporate "OR" logic. When an `OR` condition is present, the `IRTranslator` will decompose the original rule into multiple simpler rules, each representing one of the disjunctive paths. This ensures that if any of the `OR`ed sub-conditions are met (in combination with any `AND`ed conditions), the rule will fire.
+  - *Example:* A rule like "If `?x` is a king AND (`?x` is wise OR `?x` is brave), then `?x` is a good_ruler" will be translated into two distinct rules: one for the "wise king" and one for the "brave king".
+
 ---
 
 ## 3. Rule Consequences: What Rules Do

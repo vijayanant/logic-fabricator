@@ -21,7 +21,7 @@ This repo follows **strict TDD**, so the codebase evolves slowly and deliberatel
 The core logic engine is now functional. It currently supports:
 
 - **Natural Language Workbench:** An interactive REPL where rules and statements are provided in plain English, parsed by an LLM into structured logic.
-- **Advanced Rule Matching:** Defining `Rules` with complex patterns. The engine can match statements based on their structure, including multiple variables (`?x gives ?y to ?z`) and wildcards (`?speaker says *speech`).
+- **Advanced Rule Matching:** Defining `Rules` with complex patterns. The engine can match statements based on their structure, including multiple variables (`?x gives ?y to ?z`), wildcards (`?speaker says *speech`), and now supports **recursive conditions** with `AND` and `OR` logic.
 - **Multi-Level Contradiction Detection:** The system identifies and handles direct contradictions between statements, and can also proactively detect latent conflicts between the rules themselves based on their logical implications.
 - **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
 - **World State Effects:** The ability for rules to have `Effects` that directly modify a key-value `world_state`, allowing simulations to track and change state over time.
@@ -118,6 +118,46 @@ Once inside the workbench (`make run`), you can fabricate your own reality. Here
 >> state
 --- World State ---
   mortal_count: 1
+```
+
+### Example: Embracing Disjunction (OR Logic)
+
+The Fabricator now understands complex conditions with 'OR' logic. It automatically decomposes such rules into simpler ones for the core engine.
+
+```
+>> rule if ?x is a king and (?x is wise or ?x is brave), then ?x is a good_ruler
+
+++ Fabricated Rule: Rule: IF ((is ?x king) & (is ?x wise)) THEN ((is ?x good_ruler))
+++ Fabricated Rule: Rule: IF ((is ?x king) & (is ?x brave)) THEN ((is ?x good_ruler))
+
+>> sim Chandragupta is a king
+>> sim Chandragupta is wise
+
+... Simulating: is Chandragupta king
+... Simulating: is Chandragupta wise
+
+--- Simulation Report ---
+  >> Derived Facts:
+     - (is Chandragupta good_ruler)
+      >> World state is unchanged.
+
+>> reset
+
+>> rule if ?x is a king and (?x is wise or ?x is brave), then ?x is a good_ruler
+
+++ Fabricated Rule: Rule: IF ((is ?x king) & (is ?x wise)) THEN ((is ?x good_ruler))
+++ Fabricated Rule: Rule: IF ((is ?x king) & (is ?x brave)) THEN ((is ?x good_ruler))
+
+>> sim Chandragupta is a king
+>> sim Chandragupta is brave
+
+... Simulating: is Chandragupta king
+... Simulating: is Chandragupta brave
+
+--- Simulation Report ---
+  >> Derived Facts:
+     - (is Chandragupta good_ruler)
+      >> World state is unchanged.
 ```
 
 ---
