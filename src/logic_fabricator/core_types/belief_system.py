@@ -228,6 +228,29 @@ class BeliefSystem:
                         if rule.condition.exists_condition._match_single_condition(fact):
                             bindings = {}
                             break
+                elif rule.condition.forall_condition:
+                    domain_cond, property_cond = rule.condition.forall_condition
+                    domain_bindings = [
+                        b
+                        for b in (domain_cond._match_single_condition(fact) for fact in known_facts)
+                        if b is not None
+                    ]
+
+                    if not domain_bindings:
+                        bindings = {}  # Vacuously true
+                    else:
+                        all_properties_match = True
+                        for db in domain_bindings:
+                            resolved_property_terms = [db.get(t, t) for t in property_cond.terms]
+                            property_statement_to_check = Statement(
+                                verb=property_cond.verb, terms=resolved_property_terms
+                            )
+                            if property_statement_to_check not in known_facts:
+                                all_properties_match = False
+                                break
+                        if all_properties_match:
+                            bindings = {}
+
                 else:
                     bindings = rule.applies_to(list(known_facts))
 

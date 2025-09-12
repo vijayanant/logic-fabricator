@@ -628,3 +628,62 @@ def test_engine_supports_exists_quantifier_in_rule_condition():
     assert (
         belief_system.world_state.get("alert_level") == "high"
     ), "Rule with 'exists' did not fire when a matching statement was added."
+
+
+def test_engine_supports_forall_quantifier_in_rule_condition():
+    """
+    Tests that a rule with a 'forall' quantifier is triggered correctly.
+    """
+    domain_condition = Condition(verb="is", terms=["?x", "a", "raven"])
+    property_condition = Condition(verb="is", terms=["?x", "black"])
+
+    # This rule should only fire if all ravens are black.
+    rule = Rule(
+        condition=Condition(
+            forall_condition=(domain_condition, property_condition)
+        ),
+        consequences=[
+            Effect(
+                target="world_state",
+                attribute="conspiracy_formed",
+                operation="set",
+                value=True,
+            )
+        ],
+    )
+
+    # Scenario 1: Not all ravens are black (should NOT fire)
+    belief_system_fail = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+    statements_fail = [
+        Statement(verb="is", terms=["huginn", "a", "raven"]),
+        Statement(verb="is", terms=["huginn", "black"]),
+        Statement(verb="is", terms=["muninn", "a", "raven"]),
+        Statement(verb="is", terms=["muninn", "white"]), # The conflicting fact
+    ]
+    belief_system_fail.simulate(statements_fail)
+    assert "conspiracy_formed" not in belief_system_fail.world_state, "Rule fired when not all items in domain matched the property."
+
+    # Scenario 2: All ravens are black (should fire)
+    belief_system_success = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+    statements_success = [
+        Statement(verb="is", terms=["huginn", "a", "raven"]),
+        Statement(verb="is", terms=["huginn", "black"]),
+        Statement(verb="is", terms=["muninn", "a", "raven"]),
+        Statement(verb="is", terms=["muninn", "black"]),
+    ]
+    belief_system_success.simulate(statements_success)
+    assert belief_system_success.world_state.get("conspiracy_formed") is True, "Rule did not fire when all items in domain matched."
+
+    # Scenario 3: Vacuous truth with no ravens (should fire)
+    belief_system_vacuous = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+    statements_vacuous = [
+        Statement(verb="is", terms=["odin", "a", "god"])
+    ]
+    belief_system_vacuous.simulate(statements_vacuous)
+    assert belief_system_vacuous.world_state.get("conspiracy_formed") is True, "Rule did not fire for a vacuous truth (empty domain)."
