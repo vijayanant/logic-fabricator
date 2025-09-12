@@ -185,3 +185,13 @@ class CountConditionEvaluator(BaseEvaluator):
             return {}
             
         return None
+
+
+class NoneConditionEvaluator(BaseEvaluator):
+    """Evaluates a condition that checks for the absence of a matching statement."""
+
+    def evaluate(self, condition: "Condition", known_facts: set["Statement"]) -> dict | None:
+        for fact in known_facts:
+            if self._match_single_condition(condition.none_condition, fact):
+                return None  # Found one, so the 'none' condition is false
+        return {}  # Found no matches, so the 'none' condition is true
