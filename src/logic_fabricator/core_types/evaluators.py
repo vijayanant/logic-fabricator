@@ -124,8 +124,10 @@ class ExistentialConditionEvaluator(BaseEvaluator):
                 return {}
         return None
 
+import operator
+
 class UniversalConditionEvaluator(BaseEvaluator):
-    """Evaluates a condition that checks if all members of a domain have a property."""
+    """Evaluates a condition that checks if all members of a domain have a property.""" 
 
     def evaluate(self, condition: "Condition", known_facts: set["Statement"]) -> dict | None:
         domain_cond, property_cond = condition.forall_condition
@@ -149,6 +151,37 @@ class UniversalConditionEvaluator(BaseEvaluator):
                 break
         
         if all_properties_match:
+            return {}
+            
+        return None
+
+
+class CountConditionEvaluator(BaseEvaluator):
+    """Evaluates a condition based on the count of matching statements."""
+
+    def __init__(self):
+        self.operators = {
+            ">": operator.gt,
+            "<": operator.lt,
+            "==": operator.eq,
+            ">=": operator.ge,
+            "<=": operator.le,
+            "!=": operator.ne,
+        }
+
+    def evaluate(self, condition: "Condition", known_facts: set["Statement"]) -> dict | None:
+        sub_condition, op_str, value = condition.count_condition
+        
+        count = sum(
+            1 for fact in known_facts if self._match_single_condition(sub_condition, fact) is not None
+        )
+
+        op_func = self.operators.get(op_str)
+        if not op_func:
+            logger.warning(f"Unsupported operator in count condition: {op_str}")
+            return None
+
+        if op_func(count, value):
             return {}
             
         return None
