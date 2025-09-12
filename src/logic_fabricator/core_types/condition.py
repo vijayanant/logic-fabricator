@@ -9,6 +9,7 @@ from .evaluators import (
     ExistentialConditionEvaluator,
     UniversalConditionEvaluator,
     CountConditionEvaluator,
+    NoneConditionEvaluator,
 )
 
 logger = structlog.get_logger(__name__)
@@ -23,6 +24,7 @@ class Condition:
         exists_condition: "Condition" = None,
         forall_condition: tuple["Condition", "Condition"] = None,
         count_condition: tuple["Condition", str, int] = None,
+        none_condition: "Condition" = None,
         verb_synonyms: list[str] = None,
     ):
         self.verb = verb
@@ -31,6 +33,7 @@ class Condition:
         self.exists_condition = exists_condition
         self.forall_condition = forall_condition
         self.count_condition = count_condition
+        self.none_condition = none_condition
         self.verb_synonyms = verb_synonyms or []
 
         is_simple = verb is not None and terms is not None
@@ -38,10 +41,11 @@ class Condition:
         is_existential = exists_condition is not None
         is_universal = forall_condition is not None
         is_counting = count_condition is not None
+        is_negative_existential = none_condition is not None
 
-        if not (is_simple ^ is_conjunctive ^ is_existential ^ is_universal ^ is_counting):
+        if not (is_simple ^ is_conjunctive ^ is_existential ^ is_universal ^ is_counting ^ is_negative_existential):
             raise ValueError(
-                "Condition must be one of simple, conjunctive, existential, universal, or counting."
+                "Condition must be one of simple, conjunctive, existential, universal, counting, or none."
             )
         
         self.evaluator = None
@@ -55,6 +59,8 @@ class Condition:
             self.evaluator = UniversalConditionEvaluator()
         elif is_counting:
             self.evaluator = CountConditionEvaluator()
+        elif is_negative_existential:
+            self.evaluator = NoneConditionEvaluator()
 
     def evaluate(self, known_facts: set["Statement"]) -> dict | None:
         if self.evaluator:
@@ -70,6 +76,8 @@ class Condition:
             return f"(forall {str(self.forall_condition[0])}, {str(self.forall_condition[1])})"
         elif self.count_condition:
             return f"(count {str(self.count_condition[0])} {self.count_condition[1]} {self.count_condition[2]})"
+        elif self.none_condition:
+            return f"(none {str(self.none_condition)})"
         else:
             return f"({self.verb} {' '.join(self.terms)})"
 
@@ -82,6 +90,8 @@ class Condition:
             return f"Condition(FORALL=({repr(self.forall_condition[0])}, {repr(self.forall_condition[1])}))"
         elif self.count_condition:
             return f"Condition(COUNT=({repr(self.count_condition[0])}, '{self.count_condition[1]}', {self.count_condition[2]}))"
+        elif self.none_condition:
+            return f"Condition(NONE={repr(self.none_condition)})"
         else:
             return f"Condition({self.verb} {self.terms})"
 
@@ -95,6 +105,7 @@ class Condition:
             and self.exists_condition == other.exists_condition
             and self.forall_condition == other.forall_condition
             and self.count_condition == other.count_condition
+            and self.none_condition == other.none_condition
             and self.verb_synonyms == other.verb_synonyms
         )
 
@@ -113,6 +124,7 @@ class Condition:
                 self.exists_condition,
                 self.forall_condition,
                 self.count_condition,
+                self.none_condition,
                 tuple(self.verb_synonyms),
             )
         )
@@ -137,6 +149,8 @@ class Condition:
                     self.count_condition[2],
                 ]
             }
+        elif self.none_condition:
+            return {"none_condition": self.none_condition.to_dict()}
         else:
             return {
                 "verb": self.verb,
@@ -164,6 +178,9 @@ class Condition:
             op = data["count_condition"][1]
             val = data["count_condition"][2]
             return cls(count_condition=(sub_cond, op, val))
+        elif "none_condition" in data:
+            none_condition = cls.from_dict(data["none_condition"])
+            return cls(none_condition=none_condition)
         else:
             return cls(
                 verb=data["verb"],

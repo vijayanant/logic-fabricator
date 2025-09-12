@@ -728,3 +728,44 @@ def test_engine_supports_count_quantifier_in_rule_condition():
     ]
     belief_system.simulate(statement_third_knight)
     assert belief_system.world_state.get("defense_mode") == "high", "Rule did not fire when count was met."
+
+
+def test_engine_supports_none_quantifier_in_rule_condition():
+    """
+    Tests that a rule with a 'none' quantifier is triggered correctly.
+    """
+    # This rule should fire if there are no traitors.
+    none_sub_condition = Condition(verb="is", terms=["?x", "a", "traitor"])
+    rule = Rule(
+        condition=Condition(
+            none_condition=none_sub_condition
+        ),
+        consequences=[
+            Effect(
+                target="world_state",
+                attribute="peace_declared",
+                operation="set",
+                value=True,
+            )
+        ],
+    )
+
+    # Scenario 1: No traitors exist (should fire)
+    belief_system_success = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+    statements_no_traitors = [
+        Statement(verb="is", terms=["gandalf", "a", "wizard"]),
+    ]
+    belief_system_success.simulate(statements_no_traitors)
+    assert belief_system_success.world_state.get("peace_declared") is True, "Rule did not fire when no matching statements existed."
+
+    # Scenario 2: A traitor exists (should NOT fire)
+    belief_system_fail = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+    statements_with_traitor = [
+        Statement(verb="is", terms=["saruman", "a", "traitor"]),
+    ]
+    belief_system_fail.simulate(statements_with_traitor)
+    assert "peace_declared" not in belief_system_fail.world_state, "Rule fired when a matching statement existed."
