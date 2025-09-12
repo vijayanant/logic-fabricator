@@ -584,3 +584,47 @@ def test_condition_to_dict_json():
         ]
     }
     assert c_conjunctive.to_dict_json() == json.dumps(expected_dict_conjunctive)
+
+
+def test_engine_supports_exists_quantifier_in_rule_condition():
+    """
+    Tests that a rule with an 'exists' quantifier is only triggered
+    when a matching statement is present in the belief system.
+    """
+    # This rule should only fire if a statement matching "?x is a traitor" exists.
+    rule = Rule(
+        condition=Condition(
+            exists_condition=Condition(verb="is", terms=["?x", "a traitor"])
+        ),
+        consequences=[
+            Effect(
+                target="world_state",
+                attribute="alert_level",
+                operation="set",
+                value="high",
+            )
+        ],
+    )
+
+    belief_system = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+
+    # The world state should not have the alert level initially
+    assert "alert_level" not in belief_system.world_state
+
+    # Simulate a non-matching statement. The rule should not fire.
+    non_matching_statement = Statement(verb="is", terms=["gandalf", "a wizard"])
+    belief_system.simulate([non_matching_statement])
+
+    assert (
+        "alert_level" not in belief_system.world_state
+    ), "Rule with 'exists' fired incorrectly on a non-matching statement."
+
+    # Now, simulate a statement that *does* match the pattern. The rule should fire.
+    matching_statement = Statement(verb="is", terms=["saruman", "a traitor"])
+    belief_system.simulate([matching_statement])
+
+    assert (
+        belief_system.world_state.get("alert_level") == "high"
+    ), "Rule with 'exists' did not fire when a matching statement was added."

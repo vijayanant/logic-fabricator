@@ -221,16 +221,24 @@ class BeliefSystem:
                 known_facts_count=len(known_facts),
             )
             for rule in rules:
-                bindings = rule.applies_to(list(known_facts))
+                bindings = None
+                # Determine bindings based on condition type
+                if rule.condition.exists_condition:
+                    for fact in known_facts:
+                        if rule.condition.exists_condition._match_single_condition(fact):
+                            bindings = {}
+                            break
+                else:
+                    bindings = rule.applies_to(list(known_facts))
+
+                # Process consequences if the rule applied
                 if bindings is not None:
                     application_key = (rule, frozenset(bindings.items()))
                     if application_key not in processed_application_keys:
                         processed_application_keys.add(application_key)
                         final_applications.append((rule, bindings))
                         logger.debug(
-                            "Rule applied in inference chain",
-                            rule=rule,
-                            bindings=bindings,
+                            "Rule applied in inference chain", rule=rule, bindings=bindings
                         )
                         for consequence in rule.consequences:
                             if isinstance(consequence, Statement):
