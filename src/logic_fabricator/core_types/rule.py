@@ -51,7 +51,7 @@ class Rule:
         logger.debug(
             "Checking if rule applies", rule=self, statements_count=len(statements)
         )
-        bindings = self.condition.matches(statements)
+        bindings = self.condition.evaluate(set(statements))
         if bindings is not None:
             logger.debug("Rule applies", rule=self, bindings=bindings)
         else:
