@@ -687,3 +687,44 @@ def test_engine_supports_forall_quantifier_in_rule_condition():
     ]
     belief_system_vacuous.simulate(statements_vacuous)
     assert belief_system_vacuous.world_state.get("conspiracy_formed") is True, "Rule did not fire for a vacuous truth (empty domain)."
+
+
+def test_engine_supports_count_quantifier_in_rule_condition():
+    """
+    Tests that a rule with a 'count' quantifier is triggered correctly.
+    """
+    # This rule should fire if the number of knights is greater than 2.
+    # We'll represent the count condition as a tuple: (Condition, operator_str, value)
+    count_sub_condition = Condition(verb="is", terms=["?x", "a", "knight"])
+    rule = Rule(
+        condition=Condition(
+            count_condition=(count_sub_condition, ">", 2)
+        ),
+        consequences=[
+            Effect(
+                target="world_state",
+                attribute="defense_mode",
+                operation="set",
+                value="high",
+            )
+        ],
+    )
+
+    belief_system = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+
+    # Scenario 1: Count is not > 2 (should NOT fire)
+    statements_two_knights = [
+        Statement(verb="is", terms=["galahad", "a", "knight"]),
+        Statement(verb="is", terms=["lancelot", "a", "knight"]),
+    ]
+    belief_system.simulate(statements_two_knights)
+    assert "defense_mode" not in belief_system.world_state, "Rule fired when count was not met."
+
+    # Scenario 2: Count becomes > 2 (should fire)
+    statement_third_knight = [
+        Statement(verb="is", terms=["arthur", "a", "knight"]),
+    ]
+    belief_system.simulate(statement_third_knight)
+    assert belief_system.world_state.get("defense_mode") == "high", "Rule did not fire when count was met."

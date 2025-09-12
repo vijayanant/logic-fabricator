@@ -1,5 +1,6 @@
 import json
 import structlog
+from typing import Optional, Tuple
 
 from .statement import Statement
 from .evaluators import (
@@ -7,6 +8,7 @@ from .evaluators import (
     ConjunctiveConditionEvaluator,
     ExistentialConditionEvaluator,
     UniversalConditionEvaluator,
+    CountConditionEvaluator,
 )
 
 logger = structlog.get_logger(__name__)
@@ -20,6 +22,7 @@ class Condition:
         and_conditions: list["Condition"] = None,
         exists_condition: "Condition" = None,
         forall_condition: tuple["Condition", "Condition"] = None,
+        count_condition: tuple["Condition", str, int] = None,
         verb_synonyms: list[str] = None,
     ):
         self.verb = verb
@@ -27,17 +30,18 @@ class Condition:
         self.and_conditions = and_conditions
         self.exists_condition = exists_condition
         self.forall_condition = forall_condition
+        self.count_condition = count_condition
         self.verb_synonyms = verb_synonyms or []
 
         is_simple = verb is not None and terms is not None
         is_conjunctive = and_conditions is not None
         is_existential = exists_condition is not None
         is_universal = forall_condition is not None
+        is_counting = count_condition is not None
 
-        if not (is_simple ^ is_conjunctive ^ is_existential ^ is_universal):
+        if not (is_simple ^ is_conjunctive ^ is_existential ^ is_universal ^ is_counting):
             raise ValueError(
-                "Condition must be one of simple (verb/terms), conjunctive (and_conditions), "
-                "existential (exists_condition), or universal (forall_condition)."
+                "Condition must be one of simple, conjunctive, existential, universal, or counting."
             )
         
         self.evaluator = None
@@ -49,12 +53,13 @@ class Condition:
             self.evaluator = ExistentialConditionEvaluator()
         elif is_universal:
             self.evaluator = UniversalConditionEvaluator()
+        elif is_counting:
+            self.evaluator = CountConditionEvaluator()
 
     def evaluate(self, known_facts: set["Statement"]) -> dict | None:
         if self.evaluator:
             return self.evaluator.evaluate(self, known_facts)
         return None
-
 
     def __str__(self):
         if self.and_conditions:
@@ -63,6 +68,8 @@ class Condition:
             return f"(exists {str(self.exists_condition)})"
         elif self.forall_condition:
             return f"(forall {str(self.forall_condition[0])}, {str(self.forall_condition[1])})"
+        elif self.count_condition:
+            return f"(count {str(self.count_condition[0])} {self.count_condition[1]} {self.count_condition[2]})"
         else:
             return f"({self.verb} {' '.join(self.terms)})"
 
@@ -73,6 +80,8 @@ class Condition:
             return f"Condition(EXISTS={repr(self.exists_condition)})"
         elif self.forall_condition:
             return f"Condition(FORALL=({repr(self.forall_condition[0])}, {repr(self.forall_condition[1])}))"
+        elif self.count_condition:
+            return f"Condition(COUNT=({repr(self.count_condition[0])}, '{self.count_condition[1]}', {self.count_condition[2]}))"
         else:
             return f"Condition({self.verb} {self.terms})"
 
@@ -85,6 +94,7 @@ class Condition:
             and self.and_conditions == other.and_conditions
             and self.exists_condition == other.exists_condition
             and self.forall_condition == other.forall_condition
+            and self.count_condition == other.count_condition
             and self.verb_synonyms == other.verb_synonyms
         )
 
@@ -102,6 +112,7 @@ class Condition:
                 and_conditions_tuple,
                 self.exists_condition,
                 self.forall_condition,
+                self.count_condition,
                 tuple(self.verb_synonyms),
             )
         )
@@ -116,6 +127,14 @@ class Condition:
                 "forall_condition": [
                     self.forall_condition[0].to_dict(),
                     self.forall_condition[1].to_dict(),
+                ]
+            }
+        elif self.count_condition:
+            return {
+                "count_condition": [
+                    self.count_condition[0].to_dict(),
+                    self.count_condition[1],
+                    self.count_condition[2],
                 ]
             }
         else:
@@ -140,6 +159,11 @@ class Condition:
             domain = cls.from_dict(data["forall_condition"][0])
             property = cls.from_dict(data["forall_condition"][1])
             return cls(forall_condition=(domain, property))
+        elif "count_condition" in data:
+            sub_cond = cls.from_dict(data["count_condition"][0])
+            op = data["count_condition"][1]
+            val = data["count_condition"][2]
+            return cls(count_condition=(sub_cond, op, val))
         else:
             return cls(
                 verb=data["verb"],
