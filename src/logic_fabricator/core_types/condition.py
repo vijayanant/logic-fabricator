@@ -12,30 +12,38 @@ class Condition:
         verb: str = None,
         terms: list[str] = None,
         and_conditions: list["Condition"] = None,
+        exists_condition: "Condition" = None,
         verb_synonyms: list[str] = None,
     ):
+        self.verb = verb
+        self.terms = terms
         self.and_conditions = and_conditions
+        self.exists_condition = exists_condition
         self.verb_synonyms = verb_synonyms or []
-        if and_conditions is not None:
-            self.verb = None  # Not applicable for conjunctive conditions
-            self.terms = None  # Not applicable for conjunctive conditions
-        else:
-            if verb is None or terms is None:
-                raise ValueError(
-                    "Verb and terms must be provided for a single condition."
-                )
-            self.verb = verb
-            self.terms = terms
+
+        is_simple = verb is not None and terms is not None
+        is_conjunctive = and_conditions is not None
+        is_existential = exists_condition is not None
+
+        if not (is_simple ^ is_conjunctive ^ is_existential):
+            raise ValueError(
+                "Condition must be one of simple (verb/terms), conjunctive (and_conditions), "
+                "or existential (exists_condition)."
+            )
 
     def __str__(self):
         if self.and_conditions:
             return f"({' & '.join(map(str, self.and_conditions))})"
+        elif self.exists_condition:
+            return f"(exists {str(self.exists_condition)})"
         else:
             return f"({self.verb} {' '.join(self.terms)})"
 
     def __repr__(self):
         if self.and_conditions:
             return f"Condition(AND=[{', '.join(map(repr, self.and_conditions))}])"
+        elif self.exists_condition:
+            return f"Condition(EXISTS={repr(self.exists_condition)})"
         else:
             return f"Condition({self.verb} {self.terms})"
 
@@ -46,11 +54,11 @@ class Condition:
             self.verb == other.verb
             and self.terms == other.terms
             and self.and_conditions == other.and_conditions
+            and self.exists_condition == other.exists_condition
             and self.verb_synonyms == other.verb_synonyms
         )
 
     def __hash__(self):
-        # Note: and_conditions should be a tuple of conditions for hashing
         and_conditions_tuple = None
         if self.and_conditions is not None:
             and_conditions_tuple = tuple(
@@ -62,14 +70,16 @@ class Condition:
                 self.verb,
                 tuple(self.terms) if self.terms else None,
                 and_conditions_tuple,
+                self.exists_condition,
                 tuple(self.verb_synonyms),
             )
         )
 
     def to_dict(self):
         if self.and_conditions:
-            # This assumes that sub-conditions also have a to_dict method.
             return {"and_conditions": [c.to_dict() for c in self.and_conditions]}
+        elif self.exists_condition:
+            return {"exists_condition": self.exists_condition.to_dict()}
         else:
             return {
                 "verb": self.verb,
@@ -85,8 +95,15 @@ class Condition:
         if "and_conditions" in data:
             and_conditions = [cls.from_dict(d) for d in data["and_conditions"]]
             return cls(and_conditions=and_conditions)
+        elif "exists_condition" in data:
+            exists_condition = cls.from_dict(data["exists_condition"])
+            return cls(exists_condition=exists_condition)
         else:
-            return cls(verb=data["verb"], terms=data["terms"], verb_synonyms=data.get("verb_synonyms", []))
+            return cls(
+                verb=data["verb"],
+                terms=data["terms"],
+                verb_synonyms=data.get("verb_synonyms", []),
+            )
 
     def _match_single_condition(self, statement: "Statement") -> dict | None:
         logger.debug(
