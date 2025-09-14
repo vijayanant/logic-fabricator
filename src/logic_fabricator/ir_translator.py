@@ -41,12 +41,8 @@ class IRTranslator:
                     "COUNT condition must have exactly one child: the sub-condition."
                 )
             sub_ir_condition = ir_condition.children[0]
-            operator = (
-                ir_condition.operator
-            )  # Assuming operator is directly on IRCondition for COUNT
-            value = (
-                ir_condition.object
-            )  # Assuming value is directly on IRCondition for COUNT
+            operator = ir_condition.operator
+            value = ir_condition.object
             return Condition(
                 count_condition=(
                     self.translate_ir_condition(sub_ir_condition),
@@ -68,7 +64,6 @@ class IRTranslator:
         elif ir_condition.operator == "LEAF":
             return self._translate_leaf_condition(ir_condition)
         elif ir_condition.operator == "AND":
-            # For AND, we need to translate its children recursively
             and_conditions = [
                 self.translate_ir_condition(child) for child in ir_condition.children
             ]
@@ -130,16 +125,22 @@ class IRTranslator:
         This is the Disjunctive Normal Form (DNF).
         Example: (A AND (B OR C)) -> [[A, B], [A, C]]
         """
-        if ir_condition.operator == "LEAF" or ir_condition.quantifier: # Combined check
-            return [[self.translate_ir_condition(ir_condition)]]  # Call new method
+        logger.debug("Decomposing condition", ir_condition=ir_condition)
+
+        # Base case: A LEAF or quantified condition is a DNF group of one.
+        if ir_condition.operator == "LEAF" or ir_condition.quantifier:
+            logger.debug("Decomposition base case: LEAF or quantifier")
+            return [[self.translate_ir_condition(ir_condition)]]
 
         if ir_condition.operator == "OR":
+            logger.debug("Decomposing OR operator")
             all_decomposed_groups = []
             for child in ir_condition.children:
                 all_decomposed_groups.extend(self._decompose_condition(child))
             return all_decomposed_groups
 
         if ir_condition.operator == "AND":
+            logger.debug("Decomposing AND operator")
             child_decompositions = [
                 self._decompose_condition(child) for child in ir_condition.children
             ]
@@ -152,19 +153,9 @@ class IRTranslator:
                 combined_groups.append(flattened_group)
             return combined_groups
 
-        # This handles the legacy IRCondition format
-        if (
-            hasattr(ir_condition, "conjunctive_conditions")
-            and ir_condition.conjunctive_conditions
-        ):
-            main_cond = self.translate_ir_condition(ir_condition)  # Call new method
-            child_conds = [
-                self.translate_ir_condition(c)
-                for c in ir_condition.conjunctive_conditions
-            ]  # Call new method
-            return [[main_cond] + child_conds]
-        else:
-            raise UnsupportedIRFeatureError(f"Unsupported IRCondition type for decomposition: {ir_condition.operator} or {ir_condition.quantifier}")
+        raise UnsupportedIRFeatureError(
+            f"Unsupported IRCondition type for decomposition: {ir_condition.operator} or {ir_condition.quantifier}"
+        )
 
     def translate_ir_rule(self, ir_rule: IRRule) -> List[Rule]:
         logger.info("Translating IRRule", ir_rule=ir_rule)
@@ -179,6 +170,7 @@ class IRTranslator:
             )
 
         decomposed_and_groups = self._decompose_condition(ir_rule.condition)
+        logger.debug("Decomposed condition into DNF groups", groups=decomposed_and_groups)
 
         translated_rules = []
         for group in decomposed_and_groups:

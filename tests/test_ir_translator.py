@@ -180,3 +180,282 @@ def test_ir_translator_translates_none_condition():
     translated_condition = translator.translate_ir_condition(ir_none_condition)
 
     assert translated_condition == expected_condition
+
+
+def test_translate_ir_rule_with_quantified_condition():
+    """Tests that IRTranslator can translate an IRRule with a quantified condition."""
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            quantifier="EXISTS",
+            children=[IRCondition(subject="?x", verb="is", object="a_traitor")],
+        ),
+        consequence=IRStatement(subject="system", verb="triggers", object="alarm"),
+    )
+    expected_rule = Rule(
+        condition=Condition(
+            exists_condition=Condition(verb="is", terms=["?x", "a_traitor"])
+        ),
+        consequences=[Statement(verb="triggers", terms=["system", "alarm"])],
+    )
+
+    translator = IRTranslator()
+    translated_rules = translator.translate_ir_rule(ir_rule)
+
+    assert translated_rules == [expected_rule]
+
+def test_translate_rule_with_and_and_exists_condition():
+    """Tests rule with a conjunctive condition including a quantifier."""
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            operator="AND",
+            children=[
+                IRCondition(operator="LEAF", subject="?x", verb="is", object="a_king"),
+                IRCondition(
+                    quantifier="EXISTS",
+                    children=[
+                        IRCondition(subject="?y", verb="is", object="a_dragon")
+                    ],
+                ),
+            ],
+        ),
+        consequence=IRStatement(subject="?x", verb="is", object="in_danger"),
+    )
+
+    expected_rule = Rule(
+        condition=Condition(
+            and_conditions=[
+                Condition(verb="is", terms=["?x", "a_king"]),
+                Condition(
+                    exists_condition=Condition(verb="is", terms=["?y", "a_dragon"])
+                ),
+            ]
+        ),
+        consequences=[Statement(verb="is", terms=["?x", "in_danger"])],
+    )
+
+    translator = IRTranslator()
+    translated_rules = translator.translate_ir_rule(ir_rule)
+
+    assert translated_rules == [expected_rule]
+
+def test_translate_rule_with_or_and_exists_condition():
+    """Tests rule with a disjunctive condition including a quantifier."""
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            operator="OR",
+            children=[
+                IRCondition(operator="LEAF", subject="?x", verb="is", object="a_hero"),
+                IRCondition(
+                    quantifier="EXISTS",
+                    children=[
+                        IRCondition(subject="?y", verb="is", object="a_villain")
+                    ],
+                ),
+            ],
+        ),
+        consequence=IRStatement(subject="story", verb="is", object="interesting"),
+    )
+
+    expected_rule1 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a_hero"]),
+        consequences=[Statement(verb="is", terms=["story", "interesting"])],
+    )
+    expected_rule2 = Rule(
+        condition=Condition(
+            exists_condition=Condition(verb="is", terms=["?y", "a_villain"])
+        ),
+        consequences=[Statement(verb="is", terms=["story", "interesting"])],
+    )
+
+    translator = IRTranslator()
+    translated_rules = translator.translate_ir_rule(ir_rule)
+
+    assert len(translated_rules) == 2
+    assert expected_rule1 in translated_rules
+    assert expected_rule2 in translated_rules
+
+def test_translate_rule_with_and_and_forall_condition():
+    """Tests a conjunctive condition with a FORALL quantifier."""
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            operator="AND",
+            children=[
+                IRCondition(operator="LEAF", subject="?x", verb="is", object="a_shepherd"),
+                IRCondition(
+                    quantifier="FORALL",
+                    children=[
+                        IRCondition(subject="?y", verb="in", object="flock"),
+                        IRCondition(subject="?y", verb="is", object="safe"),
+                    ],
+                ),
+            ],
+        ),
+        consequence=IRStatement(subject="?x", verb="is", object="happy"),
+    )
+    expected_rule = Rule(
+        condition=Condition(
+            and_conditions=[
+                Condition(verb="is", terms=["?x", "a_shepherd"]),
+                Condition(
+                    forall_condition=(
+                        Condition(verb="in", terms=["?y", "flock"]),
+                        Condition(verb="is", terms=["?y", "safe"]),
+                    )
+                ),
+            ]
+        ),
+        consequences=[Statement(verb="is", terms=["?x", "happy"])],
+    )
+    translator = IRTranslator()
+    translated_rules = translator.translate_ir_rule(ir_rule)
+    assert translated_rules == [expected_rule]
+
+
+def test_translate_rule_with_or_and_forall_condition():
+    """Tests a disjunctive condition with a FORALL quantifier."""
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            operator="OR",
+            children=[
+                IRCondition(operator="LEAF", subject="?x", verb="is", object="a_general"),
+                IRCondition(
+                    quantifier="FORALL",
+                    children=[
+                        IRCondition(subject="?y", verb="in", object="army"),
+                        IRCondition(subject="?y", verb="is", object="loyal"),
+                    ],
+                ),
+            ],
+        ),
+        consequence=IRStatement(subject="victory", verb="is", object="possible"),
+    )
+    expected_rule1 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a_general"]),
+        consequences=[Statement(verb="is", terms=["victory", "possible"])],
+    )
+    expected_rule2 = Rule(
+        condition=Condition(
+            forall_condition=(
+                Condition(verb="in", terms=["?y", "army"]),
+                Condition(verb="is", terms=["?y", "loyal"]),
+            )
+        ),
+        consequences=[Statement(verb="is", terms=["victory", "possible"])],
+    )
+    translator = IRTranslator()
+    translated_rules = translator.translate_ir_rule(ir_rule)
+    assert len(translated_rules) == 2
+    assert expected_rule1 in translated_rules
+    assert expected_rule2 in translated_rules
+
+
+def test_translate_rule_with_and_and_count_condition():
+    """Tests a conjunctive condition with a COUNT quantifier."""
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            operator="AND",
+            children=[
+                IRCondition(operator="LEAF", subject="?x", verb="is", object="a_captain"),
+                IRCondition(
+                    quantifier="COUNT",
+                    children=[IRCondition(subject="?y", verb="in", object="crew")],
+                    operator=">",
+                    object=10,
+                ),
+            ],
+        ),
+        consequence=IRStatement(subject="?x", verb="has", object="a_large_crew"),
+    )
+    expected_rule = Rule(
+        condition=Condition(
+            and_conditions=[
+                Condition(verb="is", terms=["?x", "a_captain"]),
+                Condition(
+                    count_condition=(
+                        Condition(verb="in", terms=["?y", "crew"]),
+                        ">",
+                        10,
+                    )
+                ),
+            ]
+        ),
+        consequences=[Statement(verb="has", terms=["?x", "a_large_crew"])],
+    )
+    translator = IRTranslator()
+    translated_rules = translator.translate_ir_rule(ir_rule)
+    assert translated_rules == [expected_rule]
+
+
+def test_translate_rule_with_or_and_none_condition():
+    """Tests a disjunctive condition with a NONE quantifier."""
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            operator="OR",
+            children=[
+                IRCondition(operator="LEAF", subject="?x", verb="is", object="a_paladin"),
+                IRCondition(
+                    quantifier="NONE",
+                    children=[IRCondition(subject="?y", verb="is", object="undead")],
+                ),
+            ],
+        ),
+        consequence=IRStatement(subject="the_land", verb="is", object="blessed"),
+    )
+    expected_rule1 = Rule(
+        condition=Condition(verb="is", terms=["?x", "a_paladin"]),
+        consequences=[Statement(verb="is", terms=["the_land", "blessed"])],
+    )
+    expected_rule2 = Rule(
+        condition=Condition(
+            none_condition=Condition(verb="is", terms=["?y", "undead"])
+        ),
+        consequences=[Statement(verb="is", terms=["the_land", "blessed"])],
+    )
+    translator = IRTranslator()
+    translated_rules = translator.translate_ir_rule(ir_rule)
+    assert len(translated_rules) == 2
+    assert expected_rule1 in translated_rules
+    assert expected_rule2 in translated_rules
+
+
+def test_translate_rule_with_nested_quantifiers():
+    """Tests a rule with a nested quantifier (FORALL contains EXISTS)."""
+    ir_rule = IRRule(
+        rule_type="standard",
+        condition=IRCondition(
+            quantifier="FORALL",
+            children=[
+                IRCondition(subject="?x", verb="is", object="a_village"),  # Domain
+                IRCondition(
+                    quantifier="EXISTS",
+                    children=[
+                        IRCondition(subject="?y", verb="is_a_well_in", object="?x")
+                    ],
+                ),  # Property
+            ],
+        ),
+        consequence=IRStatement(subject="all_villages", verb="have", object="water"),
+    )
+    expected_rule = Rule(
+        condition=Condition(
+            forall_condition=(
+                Condition(verb="is", terms=["?x", "a_village"]),
+                Condition(
+                    exists_condition=Condition(
+                        verb="is_a_well_in", terms=["?y", "?x"]
+                    )
+                ),
+            )
+        ),
+        consequences=[Statement(verb="have", terms=["all_villages", "water"])],
+    )
+    translator = IRTranslator()
+    translated_rules = translator.translate_ir_rule(ir_rule)
+    assert translated_rules == [expected_rule]
