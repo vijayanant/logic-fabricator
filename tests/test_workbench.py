@@ -16,6 +16,7 @@ def mock_load_config(monkeypatch):
             llm_model="mock",
             llm_api_key="mock",
             llm_base_url=None,
+            llm_max_attempts=1,
         )
     monkeypatch.setattr("logic_fabricator.llm_parser.load_config", mock_config)
 

@@ -51,6 +51,7 @@ class Config:
     llm_model: str
     llm_api_key: str
     llm_base_url: str | None
+    llm_max_attempts: int
 
 def load_config() -> Config:
     """Loads all configuration from environment variables.
@@ -63,6 +64,7 @@ def load_config() -> Config:
     model = os.environ.get("LOGIC_FABRICATOR_MODEL")
     api_key = os.environ.get("LOGIC_FABRICATOR_API_KEY")
     base_url = os.environ.get("LOGIC_FABRICATOR_BASE_URL")  # Optional
+    max_attempts_str = os.environ.get("LOGIC_FABRICATOR_MAX_ATTEMPTS", "1")
 
     if not provider:
         raise ValueError("Configuration error: LOGIC_FABRICATOR_PROVIDER is not set.")
@@ -71,9 +73,17 @@ def load_config() -> Config:
     if not api_key:
         raise ValueError("Configuration error: LOGIC_FABRICATOR_API_KEY is not set.")
 
+    try:
+        max_attempts = int(max_attempts_str)
+    except ValueError:
+        raise ValueError(
+            f"Configuration error: LOGIC_FABRICATOR_MAX_ATTEMPTS must be an integer, but got '{max_attempts_str}'."
+        )
+
     return Config(
         llm_provider=provider,
         llm_model=model,
         llm_api_key=api_key,
         llm_base_url=base_url,
+        llm_max_attempts=max_attempts,
     )

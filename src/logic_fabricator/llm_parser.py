@@ -66,16 +66,15 @@ class LLMParser:
             effect_value=data["effect_value"],
         )
 
-    def parse_natural_language(
-        self, text: str, max_retries: int = 3
-    ) -> Union[IRRule, IRStatement, None]:
+    def parse_natural_language(self, text: str) -> Union[IRRule, IRStatement, None]:
         """
         Parses any natural language input and returns the appropriate IR object.
         The LLM will determine the type of input.
         """
         system_message_content = f"{self.system_prompt}\n\nYour response MUST be a JSON object that conforms to the following schema:\n```json\n{json.dumps(self.ir_schema, indent=2)}```"
 
-        for attempt in range(max_retries):
+        max_attempts = self.config.llm_max_attempts
+        for attempt in range(max_attempts):
             try:
                 response = self.client.chat.completions.create(
                     model=self.config.llm_model,
@@ -96,9 +95,9 @@ class LLMParser:
                     logger.debug("LLM response validated against schema.")
                 except ValidationError as e:
                     logger.warning(
-                        f"LLM response failed schema validation (attempt {attempt + 1}/{max_retries}): {e.message}"
+                        f"LLM response failed schema validation (attempt {attempt + 1}/{max_attempts}): {e.message}"
                     )
-                    if attempt == max_retries - 1:
+                    if attempt == max_attempts - 1:
                         logger.error(
                             "LLM failed schema validation after multiple retries.",
                             error=str(e),
@@ -126,9 +125,9 @@ class LLMParser:
 
             except json.JSONDecodeError as e:
                 logger.warning(
-                    f"LLM returned malformed JSON (attempt {attempt + 1}/{max_retries}): {e}"
+                    f"LLM returned malformed JSON (attempt {attempt + 1}/{max_attempts}): {e}"
                 )
-                if attempt == max_retries - 1:
+                if attempt == max_attempts - 1:
                     logger.error(
                         "LLM failed to return valid JSON after multiple retries.",
                         error=str(e),

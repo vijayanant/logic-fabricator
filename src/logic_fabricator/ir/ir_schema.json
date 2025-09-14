@@ -20,23 +20,65 @@
   "required": ["input_type", "data"],
   "definitions": {
     "IRCondition": {
-      "description": "A condition can be a simple leaf (a statement) or a complex branch (a logical combination of other conditions).",
+      "description": "A condition can be a simple leaf, a complex branch (AND/OR), or a quantified condition (EXISTS/FORALL).",
       "oneOf": [
         { "$ref": "#/definitions/IRLeafCondition" },
-        { "$ref": "#/definitions/IRBranchCondition" }
+        { "$ref": "#/definitions/IRBranchCondition" },
+        { "$ref": "#/definitions/IRQuantifierCondition" }
       ]
     },
     "IRLeafCondition": {
       "type": "object",
       "properties": {
-        "operator": {"type": "string", "const": "LEAF"},
-        "subject": {"type": "string", "description": "The subject of the condition. Use variable names like \"?x\" if present."},
-        "verb": {"type": "string", "description": "The main verb of the condition."},
-        "object": {"type": "string", "description": "The object of the condition. Use variable names like \"?y\" if present."},
-        "negated": {"type": "boolean", "default": false, "description": "True if the condition is negated (e.g., \"if not X\")."},
-        "quantifier": {"type": "string", "enum": ["ALL", "SOME", "NONE"], "description": "The quantifier for the condition (e.g., ALL, SOME, NONE)."}
+        "operator": {
+          "type": "string",
+          "const": "LEAF"
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject of the condition. Use variable names like \"?x\" if present."
+        },
+        "verb": {
+          "type": "string",
+          "description": "The main verb of the condition."
+        },
+        "object": {
+          "type": "string",
+          "description": "The object of the condition. Use variable names like \"?y\" if present."
+        },
+        "negated": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if the condition is negated (e.g., \"if not X\")."
+        }
       },
       "required": ["operator", "subject", "verb", "object"]
+    },
+    "IRQuantifierCondition": {
+      "type": "object",
+      "properties": {
+        "quantifier": {
+          "type": "string",
+          "enum": ["EXISTS", "FORALL", "COUNT", "NONE"],
+          "description": "A quantifier that operates on child conditions."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/IRCondition"
+          },
+          "description": "For EXISTS/NONE/COUNT: one child. For FORALL: two children (domain, property)."
+        },
+        "operator": {
+          "type": "string",
+          "description": "For COUNT quantifier, this holds the comparison operator (e.g., '>', '<', '==')."
+        },
+        "object": {
+          "type": "number",
+          "description": "For COUNT quantifier, this holds the number to compare against."
+        }
+      },
+      "required": ["quantifier", "children"]
     },
     "IRBranchCondition": {
       "type": "object",
