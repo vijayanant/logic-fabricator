@@ -769,3 +769,38 @@ def test_engine_supports_none_quantifier_in_rule_condition():
     ]
     belief_system_fail.simulate(statements_with_traitor)
     assert "peace_declared" not in belief_system_fail.world_state, "Rule fired when a matching statement existed."
+
+
+def test_forall_quantifier_fails_with_negated_statement():
+    """
+    Tests that a 'forall' condition correctly fails when a fact that
+    explicitly negates the property is present.
+    """
+    domain_condition = Condition(verb="is", terms=["?x", "a", "ship"])
+    property_condition = Condition(verb="is", terms=["?x", "seaworthy"])
+
+    rule = Rule(
+        condition=Condition(
+            forall_condition=(domain_condition, property_condition)
+        ),
+        consequences=[
+            Statement(verb="is", terms=["fleet", "ready"])
+        ],
+    )
+
+    belief_system = BeliefSystem(
+        rules=[rule], contradiction_engine=ContradictionEngine()
+    )
+
+    # These facts include a ship that is explicitly NOT seaworthy.
+    facts = [
+        Statement(verb="is", terms=["ship1", "a", "ship"]),
+        Statement(verb="is", terms=["ship1", "seaworthy"], negated=True),
+        Statement(verb="is", terms=["ship2", "a", "ship"]),
+        Statement(verb="is", terms=["ship2", "seaworthy"]),
+    ]
+
+    sim_result = belief_system.simulate(facts)
+
+    # The rule should NOT have fired.
+    assert Statement(verb="is", terms=["fleet", "ready"]) not in sim_result.derived_facts

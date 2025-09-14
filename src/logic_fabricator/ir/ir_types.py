@@ -5,14 +5,14 @@ class IRBase:
     pass
 
 class IRCondition(IRBase):
-    def __init__(self, operator: str = 'LEAF', children: Optional[List['IRCondition']] = None,
+    def __init__(self, operator: Optional[str] = None, children: Optional[List['IRCondition']] = None,
                  subject: Optional[str] = None, verb: Optional[str] = None, object: Optional[Union[str, List[str]]] = None,
                  negated: bool = False,
                  modifiers: Optional[List[str]] = None,
                  exceptions: Optional[List['IRCondition']] = None,
-                 quantifier: Optional[str] = None): # NEW FIELD
+                 quantifier: Optional[str] = None):
 
-        self.operator = operator
+        self.quantifier = quantifier
         self.children = children if children is not None else []
         self.subject = subject
         self.verb = verb
@@ -20,7 +20,13 @@ class IRCondition(IRBase):
         self.negated = negated
         self.modifiers = modifiers if modifiers is not None else []
         self.exceptions = exceptions if exceptions is not None else []
-        self.quantifier = quantifier # NEW FIELD
+
+        # A condition cannot be both a quantifier and a branch/leaf,
+        # with the exception of COUNT, which uses the operator field.
+        if self.quantifier and self.quantifier != "COUNT":
+            self.operator = None
+        else:
+            self.operator = operator or 'LEAF'
 
     def __eq__(self, other):
         if not isinstance(other, IRCondition):
