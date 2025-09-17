@@ -2,17 +2,17 @@ import os
 import pytest
 from neo4j import GraphDatabase
 
-from logic_fabricator.core_types import Rule, Condition, Statement, SimulationRecord, ForkingStrategy
-from logic_fabricator.neo4j_adapter import Neo4jAdapter
+from logic_fabricator.mcp import MCP
+from logic_fabricator.fabric import (
+    ForkingStrategy,
+    Rule,
+    Statement,
+    Condition,
+    SimulationRecord,
+)
 from .mocks import MockAdapter
-
-import os
-import pytest
-from neo4j import GraphDatabase
-
-from logic_fabricator.core_types import Rule, Condition, Statement, SimulationRecord, ForkingStrategy
 from logic_fabricator.neo4j_adapter import Neo4jAdapter
-from .mocks import MockAdapter
+
 
 @pytest.fixture(scope="function")
 def db_adapter():
@@ -24,18 +24,22 @@ def db_adapter():
         password = os.getenv("NEO4J_PASSWORD")
 
         if not uri or not user or not password:
-            pytest.skip("NEO4J_URI, NEO4J_USER and NEO4J_PASSWORD must be set for real database tests")
+            pytest.skip(
+                "NEO4J_URI, NEO4J_USER and NEO4J_PASSWORD must be set for real database tests"
+            )
 
         db_driver = GraphDatabase.driver(uri, auth=(user, password))
         with db_driver.session() as session:
-            session.run("MATCH (n) DETACH DELETE n") # Clean up DB before each test
+            session.run("MATCH (n) DETACH DELETE n")  # Clean up DB before each test
         yield Neo4jAdapter(driver=db_driver)
         db_driver.close()
+
 
 @pytest.fixture
 def mcp_fixture(db_adapter):
     """Provides an MCP instance with the appropriate db_adapter."""
     from logic_fabricator.mcp import MCP
+
     mcp = MCP(db_adapter=db_adapter)
     yield mcp
     mcp.close()
@@ -49,16 +53,18 @@ def test_simulation_is_persisted_in_mcp_graph(mcp_fixture):
     # ARRANGE
     mcp = mcp_fixture
     belief_system_name = "Test Belief System for Simulation Persistence"
-    belief_system_id = mcp.create_belief_system(belief_system_name, ForkingStrategy.COEXIST)
+    belief_system_id = mcp.create_belief_system(
+        belief_system_name, ForkingStrategy.COEXIST
+    )
 
     rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "a man"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
         consequences=[Statement(verb="is", terms=["?x", "mortal"])],
     )
     mcp.add_rule(belief_system_id, rule)
 
     initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
-    
+
     # ACT
     # Simulate via MCP, which should handle persistence
     simulation_record = mcp.simulate(belief_system_id, [initial_statement])
@@ -71,10 +77,12 @@ def test_simulation_is_persisted_in_mcp_graph(mcp_fixture):
 
 def test_mcp_get_simulation_history_returns_records(mcp_fixture):
     mcp = mcp_fixture
-    belief_system_id = mcp.create_belief_system("Test History BS", ForkingStrategy.COEXIST)
-    
+    belief_system_id = mcp.create_belief_system(
+        "Test History BS", ForkingStrategy.COEXIST
+    )
+
     rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "a man"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
         consequences=[Statement(verb="is", terms=["?x", "mortal"])],
     )
     mcp.add_rule(belief_system_id, rule)
@@ -87,6 +95,7 @@ def test_mcp_get_simulation_history_returns_records(mcp_fixture):
     assert isinstance(history[0], SimulationRecord)
     assert history[0].initial_statements[0] == initial_statement
 
+
 def test_add_rule_persists_rule_and_relationship(mcp_fixture):
     """
     Tests that adding a rule to a belief system via MCP.add_rule
@@ -94,10 +103,12 @@ def test_add_rule_persists_rule_and_relationship(mcp_fixture):
     """
     # ARRANGE
     mcp = mcp_fixture
-    belief_system_id = mcp.create_belief_system("Test Belief System for Rule Persistence", ForkingStrategy.COEXIST)
+    belief_system_id = mcp.create_belief_system(
+        "Test Belief System for Rule Persistence", ForkingStrategy.COEXIST
+    )
 
     rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "a man"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
         consequences=[Statement(verb="is", terms=["?x", "mortal"])],
     )
 
@@ -109,6 +120,7 @@ def test_add_rule_persists_rule_and_relationship(mcp_fixture):
     if isinstance(mcp.db_adapter, MockAdapter):
         assert rule in mcp.db_adapter.belief_systems[belief_system_id]["rules"]
 
+
 def test_fork_belief_system_persists_fork_and_relationship(mcp_fixture):
     """
     Tests that forking a belief system via MCP.fork_belief_system
@@ -116,7 +128,9 @@ def test_fork_belief_system_persists_fork_and_relationship(mcp_fixture):
     """
     # ARRANGE
     mcp = mcp_fixture
-    parent_belief_system_id = mcp.create_belief_system("Parent Belief System", ForkingStrategy.COEXIST)
+    parent_belief_system_id = mcp.create_belief_system(
+        "Parent Belief System", ForkingStrategy.COEXIST
+    )
     fork_name = "Forked Belief System"
 
     # ACT
@@ -126,30 +140,41 @@ def test_fork_belief_system_persists_fork_and_relationship(mcp_fixture):
     # This assertion is only valid for the mock adapter
     if isinstance(mcp.db_adapter, MockAdapter):
         assert forked_belief_system_id in mcp.db_adapter.belief_systems
-        assert mcp.db_adapter.belief_systems[forked_belief_system_id]["name"] == fork_name
-import pytest
-from logic_fabricator.mcp import MCP
-from logic_fabricator.fabric import ForkingStrategy, Rule, Condition, Statement
-from .mocks import MockAdapter
+        assert (
+            mcp.db_adapter.belief_systems[forked_belief_system_id]["name"] == fork_name
+        )
+
 
 @pytest.fixture
 def mcp_with_mock_adapter():
     return MCP(db_adapter=MockAdapter())
 
+
 def test_mcp_create_belief_system(mcp_with_mock_adapter: MCP):
     mcp = mcp_with_mock_adapter
-    belief_system_id = mcp.create_belief_system("Test Belief System", ForkingStrategy.COEXIST)
+    belief_system_id = mcp.create_belief_system(
+        "Test Belief System", ForkingStrategy.COEXIST
+    )
     assert belief_system_id is not None
     assert belief_system_id in mcp.belief_systems
-    assert mcp.db_adapter.belief_systems[belief_system_id]["name"] == "Test Belief System"
+    assert (
+        mcp.db_adapter.belief_systems[belief_system_id]["name"] == "Test Belief System"
+    )
+
 
 def test_mcp_add_rule(mcp_with_mock_adapter: MCP):
     mcp = mcp_with_mock_adapter
-    belief_system_id = mcp.create_belief_system("Test Belief System", ForkingStrategy.COEXIST)
-    rule = Rule(condition=Condition(verb="is", terms=["?x", "a man"]), consequences=[Statement(verb="is", terms=["?x", "mortal"])])
+    belief_system_id = mcp.create_belief_system(
+        "Test Belief System", ForkingStrategy.COEXIST
+    )
+    rule = Rule(
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
+        consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+    )
     mcp.add_rule(belief_system_id, rule)
     assert rule in mcp.belief_systems[belief_system_id].rules
     assert rule in mcp.db_adapter.belief_systems[belief_system_id]["rules"]
+
 
 def test_mcp_fork_belief_system(mcp_with_mock_adapter: MCP):
     mcp = mcp_with_mock_adapter
@@ -159,32 +184,29 @@ def test_mcp_fork_belief_system(mcp_with_mock_adapter: MCP):
     assert fork_id in mcp.db_adapter.belief_systems
     assert mcp.db_adapter.belief_systems[fork_id]["name"] == "Fork"
 
+
 def test_mcp_simulate_persists_simulation(mcp_with_mock_adapter: MCP):
     mcp = mcp_with_mock_adapter
     belief_system_id = mcp.create_belief_system("Test", ForkingStrategy.COEXIST)
-    rule = Rule(condition=Condition(verb="is", terms=["?x", "a man"]), consequences=[Statement(verb="is", terms=["?x", "mortal"])])
+    rule = Rule(
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
+        consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+    )
     mcp.add_rule(belief_system_id, rule)
     statements = [Statement(verb="is", terms=["Socrates", "a man"])]
     mcp.simulate(belief_system_id, statements)
     assert len(mcp.db_adapter.simulations) == 1
     assert mcp.db_adapter.simulations[0].initial_statements == statements
 
-import uuid
 
 def test_statement_persistence_handles_all_attributes(db_adapter):
     """
     Tests that saving and loading a Statement preserves all its core attributes,
     especially non-default ones like 'negated' and 'priority'.
     """
-    
-
-    
 
     original_statement = Statement(
-        verb="is",
-        terms=["sky", "blue"],
-        negated=True,
-        priority=0.8
+        verb="is", terms=["sky", "blue"], negated=True, priority=0.8
     )
 
     # ACT
@@ -197,3 +219,4 @@ def test_statement_persistence_handles_all_attributes(db_adapter):
     assert loaded_statement.terms == original_statement.terms
     assert loaded_statement.negated == original_statement.negated
     assert loaded_statement.priority == original_statement.priority
+

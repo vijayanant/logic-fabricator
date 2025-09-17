@@ -7,10 +7,11 @@ The top-level JSON object you return MUST have two keys:
 - `"data"`: An object containing the structured IR representation, the format of which is defined by the schema based on the `input_type`.
 
 **Classification Guidelines:**
--   **"rule"**: Use this `input_type` if the natural language input describes a conditional relationship, a general principle, or a causal link. Rules *always* imply a "IF [condition] THEN [consequence]" structure, even if not explicitly stated.
+-   **"rule"**: Use this `input_type` if the natural language input describes a conditional relationship, a general principle, or a causal link. Any sentence containing a conditional clause, such as 'if...', 'when...', or 'unless...', MUST be classified as a 'rule'. Rules *always* imply a "IF [condition] THEN [consequence]" structure, even if not explicitly stated.
+    -   **IMPORTANT**: Do not be confused if the consequence sounds like a simple statement. The presence of a conditional "if" clause makes the entire input a **rule**. For example, for the input `"if the light is green, the car can go"`, the correct `input_type` is `"rule"`.
     -   **Example Rule Phrases**: "If X, then Y", "When A happens, B follows", "X implies Y", "X causes Y".
     -   **"rule_type": "standard"**: For rules where the consequence is a new logical statement (e.g., "If X is a man, then X is mortal").
-    -   **"rule_type": "effect"**: For rules where the consequence is an action that modifies a world state. These rules describe changes to quantities or states. Look for action verbs and numerical or state changes.
+    -   **"rule_type": "effect"**: For rules where the consequence is an action that modifies a world state. These rules describe changes to quantities or states. Look for action verbs and numerical or state changes. Consequences that are simple statements of being (e.g., 'the fleet is ready', 'the sky is blue') are NOT effects; they are consequences for 'standard' rules.
         -   **Example Effect Rule Phrases**: "increment X by Y", "set Z to W", "add A to B", "remove C from D", "increase E", "decrease F".
         -   The `consequence` for `effect` rules MUST be of `type: "effect"` as defined in the schema.
     - **Example Effect Rule**:
@@ -22,7 +23,7 @@ The top-level JSON object you return MUST have two keys:
           "data": {
             "rule_type": "effect",
             "condition": {
-              "operator": "LEAF",
+              "type": "LEAF",
               "subject": "?x",
               "verb": "is",
               "object": "mortal"
@@ -46,17 +47,17 @@ The top-level JSON object you return MUST have two keys:
 -   **Atomic Fields**: Ensure `subject`, `verb`, and `object` fields are as atomic as possible.
     -   For `object` fields that are compound nouns or phrases, extract the core noun (e.g., "a man" -> `object: "man"`). **Always remove articles (a, an, the) from the object.**
     -   For `verb` fields, extract the core action. If the natural language combines verb and object (e.g., "is mortal"), separate them into `verb: "is"` and `object: "mortal"`.
-    -   **Example**: For "X is a man", the `condition` should be `{"subject": "X", "verb": "is", "object": "man"}`.
-    -   **Example**: For "X is mortal", the `consequence` should be `{"subject": "X", "verb": "is", "object": "mortal"}`.
+    -   **Example**: For "X is a man", the `condition` should be `{"type": "LEAF", "subject": "X", "verb": "is", "object": "man"}`.
+    -   **Example**: For "X is mortal", the `consequence` should be `{"type": "statement", "subject": "X", "verb": "is", "object": "mortal"}`.
 -   Adhere strictly to the JSON Schema provided in the system message.
 -   Your response MUST be a single JSON object and nothing else. Do not add any extra commentary or explanations.
 
 **Definitional vs. Conditional Rules (IMPORTANT):**
 -   If a rule states a universal, definitional truth (e.g., "all dogs are mammals"), parse it as a simple IF/THEN rule. The "for all" is implicit.
     -   **Input**: `"rule for all x, if x is a dog, then x is a mammal"`
-    -   **Correct `condition`**: `{"operator": "LEAF", "subject": "?x", "verb": "is", "object": "dog"}`
+    -   **Correct `condition`**: `{"type": "LEAF", "subject": "?x", "verb": "is", "object": "dog"}`
     -   **Correct `consequence`**: `{"type": "statement", "subject": "?x", "verb": "is", "object": "mammal"}`
--   Only use the `FORALL` quantifier when the rule is *checking* if a property is true for a whole set as a condition for a *different* consequence.
+-   Only use the `FORALL` type when the rule is *checking* if a property is true for a whole set as a condition for a *different* consequence.
 
 **Negation Handling:**
 - If a statement or condition is negated, you MUST set the `"negated"` field to `true`.
@@ -73,33 +74,33 @@ The top-level JSON object you return MUST have two keys:
   }
   ```
 
-
 **Complex, Recursive Conditions:**
-- When a rule contains complex logical operators like "AND" or "OR", you MUST generate a nested, recursive `IRCondition` structure.
-- An `IRCondition` can be a `IRBranchCondition` (with an `operator` and `children`) or an `IRLeafCondition` (with `subject`, `verb`, `object`).
+- When a rule contains complex logical operators like "AND" or "OR", or quantifiers like "EXISTS", "FORALL", "COUNT", or "NONE", you MUST generate a nested, recursive `IRCondition` structure.
+- The `type` field of the `IRCondition` object is the primary discriminator. Supported types are: `"LEAF"`, `"AND"`, `"OR"`, `"EXISTS"`, `"FORALL"`, `"COUNT"`, `"NONE"`.
+
 - **Example Input**: `"If ?x is a king and (?x is wise or ?x is brave), then ?x is a good_ruler."`
 - **Correct JSON Output for the `condition` part**: 
 ```json
 {
-  "operator": "AND",
+  "type": "AND",
   "children": [
     {
-      "operator": "LEAF",
+      "type": "LEAF",
       "subject": "?x",
       "verb": "is",
       "object": "king"
     },
     {
-      "operator": "OR",
+      "type": "OR",
       "children": [
         {
-          "operator": "LEAF",
+          "type": "LEAF",
           "subject": "?x",
           "verb": "is",
           "object": "wise"
         },
         {
-          "operator": "LEAF",
+          "type": "LEAF",
           "subject": "?x",
           "verb": "is",
           "object": "brave"
@@ -110,23 +111,18 @@ The top-level JSON object you return MUST have two keys:
 }
 ```
 
-**Quantifiers (IMPORTANT):**
-- Quantified conditions are distinct from `AND`/`OR` branches. They MUST use the `"quantifier"` field, NOT the `"operator"` field.
-- **WRONG**: `{"operator": "FORALL", "children": [...]}`
-- **CORRECT**: `{"quantifier": "FORALL", "children": [...]}`
-- When a condition involves a quantifier like "exists", "for all", "none", or a count, you MUST generate an `IRQuantifierCondition`.
-- This is a distinct object, separate from `IRLeafCondition` and `IRBranchCondition`.
-- Supported `quantifier` values are: `"EXISTS"`, `"FORALL"`, `"COUNT"`, `"NONE"`.
+**Quantifiers (EXISTS, FORALL, COUNT, NONE):**
+- These are specified using the `type` field, just like `AND` and `OR`.
 
 - **EXISTS**: For phrases like "there exists a...", "there is at least one...", "some...". It should have one child condition.
   - **Example Input**: `"If there exists a traitor, then sound the alarm."`
   - **Correct `condition` JSON**:
     ```json
     {
-      "quantifier": "EXISTS",
+      "type": "EXISTS",
       "children": [
         {
-          "operator": "LEAF",
+          "type": "LEAF",
           "subject": "?x",
           "verb": "is",
           "object": "traitor"
@@ -137,47 +133,24 @@ The top-level JSON object you return MUST have two keys:
 
 - **FORALL**: This quantifier checks if a property holds for all members of a given domain. It MUST have two `children`:
   1.  **The Domain:** The first child defines the set of things being discussed (e.g., `?x is a ship`).
-  2.  **The Property:** The second child is the property that must be true for every member of the domain. If the natural language uses an "if" clause (e.g., "for all ships, if it is seaworthy..."), that "if" clause defines the property. **Do not create an "IF" operator.** Simply parse the property clause as a standard LEAF or Branch condition.
+  2.  **The Property:** The second child is the property that must be true for every member of the domain.
   - **Example Input**: `"A king is happy if for all his subjects, they are loyal."`
   - **Correct `condition` JSON for the `forall` part**:
     ```json
     {
-      "quantifier": "FORALL",
+      "type": "FORALL",
       "children": [
         {
-          "operator": "LEAF",
+          "type": "LEAF",
           "subject": "?y",
           "verb": "is_subject_of",
           "object": "?x"
         },
         {
-          "operator": "LEAF",
+          "type": "LEAF",
           "subject": "?y",
           "verb": "is",
           "object": "loyal"
-        }
-      ]
-    }
-    ```
-
-- **Example 2 (different phrasing)**:
-  - **Input**: `"For all ships, if a ship is seaworthy, then it is ready."`
-  - **Correct `condition` JSON**:
-    ```json
-    {
-      "quantifier": "FORALL",
-      "children": [
-        {
-          "operator": "LEAF",
-          "subject": "?x",
-          "verb": "is",
-          "object": "ship"
-        },
-        {
-          "operator": "LEAF",
-          "subject": "?x",
-          "verb": "is",
-          "object": "seaworthy"
         }
       ]
     }
@@ -188,10 +161,10 @@ The top-level JSON object you return MUST have two keys:
   - **Correct `condition` JSON**:
     ```json
     {
-      "quantifier": "NONE",
+      "type": "NONE",
       "children": [
         {
-          "operator": "LEAF",
+          "type": "LEAF",
           "subject": "?x",
           "verb": "is",
           "object": "coward"
@@ -200,21 +173,21 @@ The top-level JSON object you return MUST have two keys:
     }
     ```
 
-- **COUNT**: For phrases involving counting, like "at least 5...", "more than 2...". It has one child (the items to count) and uses the `operator` and `object` fields for the comparison.
+- **COUNT**: For phrases involving counting, like "at least 5...", "more than 2...". It has one child (the items to count) and uses the `operator` and `value` fields for the comparison.
   - **Example Input**: `"If there are more than 3 guards, the area is secure."`
   - **Correct `condition` JSON**:
     ```json
     {
-      "quantifier": "COUNT",
+      "type": "COUNT",
       "children": [
         {
-          "operator": "LEAF",
+          "type": "LEAF",
           "subject": "?x",
           "verb": "is",
           "object": "guard"
         }
       ],
       "operator": ">",
-      "object": 3
+      "value": 3
     }
     ```
