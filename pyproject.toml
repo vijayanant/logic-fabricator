@@ -25,6 +25,7 @@ openai = ">=1.0.0,<2.0.0"
 python-dotenv = "^1.0.0"
 structlog = "^24.3.0"
 neo4j = "^5.22.0"
+jsonschema = "^4.23.1"
 
 [tool.pytest.ini_options]
 markers = [
