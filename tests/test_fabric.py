@@ -20,7 +20,7 @@ def test_statement_has_structure():
 def test_rule_applies_to_statement_by_verb():
     statement = Statement(verb="is", terms=[])
     rule = Rule(
-        condition=Condition(verb="is", terms=[]),
+        condition=Condition(type="LEAF", verb="is", terms=[]),
         consequences=[Statement(verb="", terms=[])],
     )
     assert rule.applies_to([statement]) is not None
@@ -29,6 +29,7 @@ def test_rule_applies_to_statement_by_verb():
 def test_rule_applies_to_statement_with_synonym():
     statement = Statement(verb="relies on", terms=["Alice", "Bob"])
     condition = Condition(
+        type="LEAF",
         verb="trusts",
         terms=["?x", "?y"],
         verb_synonyms=["relies on", "has faith in"],
@@ -40,7 +41,7 @@ def test_rule_applies_to_statement_with_synonym():
 
 def test_rule_applies_with_variable_binding():
     statement = Statement(verb="is", terms=["Socrates", "a man"])
-    condition = Condition(verb="is", terms=["?x", "a man"])
+    condition = Condition(type="LEAF", verb="is", terms=["?x", "a man"])
     rule = Rule(condition=condition, consequences=[])
     bindings = rule.applies_to([statement])
     assert bindings == {"?x": "Socrates"}
@@ -51,14 +52,14 @@ def test_rule_applies_with_variable_binding():
 
 def test_rule_applies_with_fewer_condition_terms():
     statement = Statement(verb="is", terms=["Socrates", "a man", "wise"])
-    condition = Condition(verb="is", terms=["?x", "a man"])
+    condition = Condition(type="LEAF", verb="is", terms=["?x", "a man"])
     rule = Rule(condition=condition, consequences=[])
     bindings = rule.applies_to([statement])
     assert bindings == {"?x": "Socrates"}
 
 
 def test_rule_generates_consequence_from_bindings():
-    condition = Condition(verb="is", terms=["?x", "a man"])
+    condition = Condition(type="LEAF", verb="is", terms=["?x", "a man"])
     consequence_template = Statement(verb="is", terms=["?x", "mortal"])
     rule = Rule(condition=condition, consequences=[consequence_template])
     bindings = {"?x": "Socrates"}
@@ -70,7 +71,7 @@ def test_rule_generates_consequence_from_bindings():
 
 
 def test_rule_generates_negated_consequence():
-    condition = Condition(verb="is", terms=["?x", "a man"])
+    condition = Condition(type="LEAF", verb="is", terms=["?x", "a man"])
     consequence_template = Statement(verb="is", terms=["?x", "immortal"], negated=True)
     rule = Rule(condition=condition, consequences=[consequence_template])
     bindings = {"?x": "Socrates"}
@@ -89,7 +90,7 @@ def test_contradiction_detection_simple():
 
 def test_belief_system_infers_statement():
     initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
-    rule_condition = Condition(verb="is", terms=["?x", "a man"])
+    rule_condition = Condition(type="LEAF", verb="is", terms=["?x", "a man"])
     rule_consequence = Statement(verb="is", terms=["?x", "mortal"])
     rule = Rule(condition=rule_condition, consequences=[rule_consequence])
     belief_system = BeliefSystem(
@@ -146,20 +147,24 @@ def test_contradiction_detection_negation():
 
 
 def test_condition_stores_and_conditions():
-    sub_condition1 = Condition(verb="is", terms=["?x", "a man"])
-    sub_condition2 = Condition(verb="is", terms=["?x", "wise"])
-    conjunctive_condition = Condition(and_conditions=[sub_condition1, sub_condition2])
-    assert conjunctive_condition.and_conditions == [sub_condition1, sub_condition2]
+    sub_condition1 = Condition(type="LEAF", verb="is", terms=["?x", "a man"])
+    sub_condition2 = Condition(type="LEAF", verb="is", terms=["?x", "wise"])
+    conjunctive_condition = Condition(
+        type="AND", children=[sub_condition1, sub_condition2]
+    )
+    assert conjunctive_condition.type == "AND"
+    assert conjunctive_condition.children == [sub_condition1, sub_condition2]
     assert conjunctive_condition.verb is None
-    assert conjunctive_condition.terms is None
 
 
 def test_rule_with_conjunctive_condition_infers_statement():
     statement1 = Statement(verb="is", terms=["Socrates", "a man"])
     statement2 = Statement(verb="is", terms=["Socrates", "wise"])
-    condition_man = Condition(verb="is", terms=["?x", "a man"])
-    condition_wise = Condition(verb="is", terms=["?x", "wise"])
-    conjunctive_condition = Condition(and_conditions=[condition_man, condition_wise])
+    condition_man = Condition(type="LEAF", verb="is", terms=["?x", "a man"])
+    condition_wise = Condition(type="LEAF", verb="is", terms=["?x", "wise"])
+    conjunctive_condition = Condition(
+        type="AND", children=[condition_man, condition_wise]
+    )
     consequence_template = Statement(verb="is", terms=["?x", "mortal"])
     rule = Rule(condition=conjunctive_condition, consequences=[consequence_template])
     belief_system = BeliefSystem(
@@ -172,11 +177,11 @@ def test_rule_with_conjunctive_condition_infers_statement():
 
 def test_simulation_engine_chains_inferences():
     rule1 = Rule(
-        condition=Condition(verb="is", terms=["?x", "a man"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
         consequences=[Statement(verb="is", terms=["?x", "mortal"])],
     )
     rule2 = Rule(
-        condition=Condition(verb="is", terms=["?x", "mortal"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "mortal"]),
         consequences=[Statement(verb="needs", terms=["?x", "to eat"])],
     )
     belief_system = BeliefSystem(
@@ -190,11 +195,11 @@ def test_simulation_engine_chains_inferences():
 
 def test_simulation_result_captures_applied_rules():
     rule1 = Rule(
-        condition=Condition(verb="is", terms=["?x", "a man"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
         consequences=[Statement(verb="is", terms=["?x", "mortal"])],
     )
     rule2 = Rule(
-        condition=Condition(verb="is", terms=["?x", "a god"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a god"]),
         consequences=[Statement(verb="is", terms=["?x", "immortal"])],
     )
     belief_system = BeliefSystem(
@@ -208,7 +213,7 @@ def test_simulation_result_captures_applied_rules():
 
 def test_forked_system_is_independently_simulatable():
     rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "a god"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a god"]),
         consequences=[Statement(verb="is", terms=["?x", "immortal"])],
     )
     belief_system = BeliefSystem(
@@ -256,7 +261,7 @@ def test_simulation_propagates_to_forks():
     forked_system = sim_result_fork.forked_belief_system
     assert forked_system is not None
     fork_only_rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "bright"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "bright"]),
         consequences=[Statement(verb="emits", terms=["?x", "light"])],
     )
     forked_system.rules.append(fork_only_rule)
@@ -350,7 +355,7 @@ def test_rule_with_effect_modifies_world_state():
     """Tests that a rule with a generic Effect can modify the world_state."""
     belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     rule = Rule(
-        condition=Condition(verb="is", terms=["alarm", "on"]),
+        condition=Condition(type="LEAF", verb="is", terms=["alarm", "on"]),
         consequences=[
             Effect(
                 target="world_state", attribute="status", operation="set", value="alert"
@@ -367,7 +372,7 @@ def test_rule_with_effect_and_statement_consequences():
     """Tests that a rule can have both a Statement and an Effect as consequences."""
     belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "a traitor"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a traitor"]),
         consequences=[
             Statement(verb="is", terms=["?x", "exiled"]),
             Effect(
@@ -395,7 +400,7 @@ def test_effects_are_not_re_applied_across_simulations():
     """Tests that an effect is not re-triggered by old statements in a new simulation."""
     belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "dead"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "dead"]),
         consequences=[
             Effect(
                 target="world_state",
@@ -423,7 +428,7 @@ def test_effects_are_not_re_applied_across_simulations():
 
 def test_rule_matches_based_on_statement_structure():
     statement = Statement(verb="gives", terms=["Alice", "the book", "to", "Bob"])
-    condition = Condition(verb="gives", terms=["?x", "?y", "to", "?z"])
+    condition = Condition(type="LEAF", verb="gives", terms=["?x", "?y", "to", "?z"])
     rule = Rule(condition=condition, consequences=[])
     bindings = rule.applies_to([statement])
     assert bindings == {"?x": "Alice", "?y": "the book", "?z": "Bob"}
@@ -434,7 +439,7 @@ def test_rule_matches_with_wildcard_term():
         verb="says", terms=["Alice", "hello", "world", "and", "goodbye"]
     )
     # The condition looks for a speaker and captures the rest of the terms as their speech.
-    condition = Condition(verb="says", terms=["?speaker", "*speech"])
+    condition = Condition(type="LEAF", verb="says", terms=["?speaker", "*speech"])
     rule = Rule(condition=condition, consequences=[])
     bindings = rule.applies_to([statement])
     assert bindings == {
@@ -449,19 +454,19 @@ def test_engine_detects_conflict_with_context():
 
     # Rule 1: A penguin is a bird.
     rule_implication = Rule(
-        condition=Condition(verb="is", terms=["?x", "a penguin"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a penguin"]),
         consequences=[Statement(verb="is", terms=["?x", "a bird"])],
     )
 
     # Rule 2: A bird can fly.
     rule_general = Rule(
-        condition=Condition(verb="is", terms=["?y", "a bird"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?y", "a bird"]),
         consequences=[Statement(verb="can", terms=["?y", "fly"])],
     )
 
     # Rule 3: A penguin cannot fly.
     rule_specific = Rule(
-        condition=Condition(verb="is", terms=["?z", "a penguin"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?z", "a penguin"]),
         consequences=[Statement(verb="can", terms=["?z", "fly"], negated=True)],
     )
 
@@ -477,11 +482,11 @@ def test_engine_detects_conflict_with_context():
 def test_inference_chain_is_pure():
     """Tests that the new _run_inference_chain function is pure and correct."""
     rule1 = Rule(
-        condition=Condition(verb="is", terms=["?x", "a man"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
         consequences=[Statement(verb="is", terms=["?x", "mortal"])],
     )
     rule2 = Rule(
-        condition=Condition(verb="is", terms=["?x", "mortal"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "mortal"]),
         consequences=[Statement(verb="needs", terms=["?x", "to eat"])],
     )
     initial_statements = {Statement(verb="is", terms=["Socrates", "a man"])}
@@ -505,20 +510,20 @@ def test_belief_system_detects_and_records_latent_conflict_on_rule_add():
     # Define rules that will create a latent conflict
     # Rule 1: If ?x is a bird, then ?x can fly
     rule1 = Rule(
-        condition=Condition(verb="is", terms=["?x", "a", "bird"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a", "bird"]),
         consequences=[Statement(verb="can", terms=["?x", "fly"])],
     )
 
     # Rule 2: If ?x is a penguin, then ?x cannot fly
     rule2 = Rule(
-        condition=Condition(verb="is", terms=["?x", "a", "penguin"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a", "penguin"]),
         consequences=[Statement(verb="can", terms=["?x", "fly"], negated=True)],
     )
 
     # Context Rule: If ?x is a penguin, then ?x is a bird
     # This rule creates the latent conflict when added
     context_rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "a", "penguin"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a", "penguin"]),
         consequences=[Statement(verb="is", terms=["?x", "a", "bird"])],
     )
 
@@ -537,6 +542,7 @@ def test_belief_system_detects_and_records_latent_conflict_on_rule_add():
     assert record.statement2 is None  # No statement-level contradiction here
     assert "latent conflict" in record.resolution.lower()
     assert record.type == "rule_latent"  # Assert the type
+
 
 def test_statement_to_dict_json():
     """
@@ -560,13 +566,15 @@ def test_statement_to_dict_json():
     }
     assert s_negated.to_dict_json() == json.dumps(expected_dict_negated)
 
+
 def test_condition_to_dict_json():
     """
     Tests that Condition.to_dict_json() returns a correct JSON string representation.
     """
     # Test with a simple condition
-    c_simple = Condition(verb="is", terms=["Socrates", "a man"])
+    c_simple = Condition(type="LEAF", verb="is", terms=["Socrates", "a man"])
     expected_dict_simple = {
+        "type": "LEAF",
         "verb": "is",
         "terms": ["Socrates", "a man"],
         "verb_synonyms": [],
@@ -574,14 +582,25 @@ def test_condition_to_dict_json():
     assert c_simple.to_dict_json() == json.dumps(expected_dict_simple)
 
     # Test with a conjunctive condition
-    sub_c1 = Condition(verb="is", terms=["?x", "a king"])
-    sub_c2 = Condition(verb="is", terms=["?x", "wise"])
-    c_conjunctive = Condition(and_conditions=[sub_c1, sub_c2])
+    sub_c1 = Condition(type="LEAF", verb="is", terms=["?x", "a king"])
+    sub_c2 = Condition(type="LEAF", verb="is", terms=["?x", "wise"])
+    c_conjunctive = Condition(type="AND", children=[sub_c1, sub_c2])
     expected_dict_conjunctive = {
-        "and_conditions": [
-            {"verb": "is", "terms": ["?x", "a king"], "verb_synonyms": []},
-            {"verb": "is", "terms": ["?x", "wise"], "verb_synonyms": []},
-        ]
+        "type": "AND",
+        "children": [
+            {
+                "type": "LEAF",
+                "verb": "is",
+                "terms": ["?x", "a king"],
+                "verb_synonyms": [],
+            },
+            {
+                "type": "LEAF",
+                "verb": "is",
+                "terms": ["?x", "wise"],
+                "verb_synonyms": [],
+            },
+        ],
     }
     assert c_conjunctive.to_dict_json() == json.dumps(expected_dict_conjunctive)
 
@@ -594,7 +613,8 @@ def test_engine_supports_exists_quantifier_in_rule_condition():
     # This rule should only fire if a statement matching "?x is a traitor" exists.
     rule = Rule(
         condition=Condition(
-            exists_condition=Condition(verb="is", terms=["?x", "a traitor"])
+            type="EXISTS",
+            children=[Condition(type="LEAF", verb="is", terms=["?x", "a traitor"])],
         ),
         consequences=[
             Effect(
@@ -617,30 +637,30 @@ def test_engine_supports_exists_quantifier_in_rule_condition():
     non_matching_statement = Statement(verb="is", terms=["gandalf", "a wizard"])
     belief_system.simulate([non_matching_statement])
 
-    assert (
-        "alert_level" not in belief_system.world_state
-    ), "Rule with 'exists' fired incorrectly on a non-matching statement."
+    assert "alert_level" not in belief_system.world_state, (
+        "Rule with 'exists' fired incorrectly on a non-matching statement."
+    )
 
     # Now, simulate a statement that *does* match the pattern. The rule should fire.
     matching_statement = Statement(verb="is", terms=["saruman", "a traitor"])
     belief_system.simulate([matching_statement])
 
-    assert (
-        belief_system.world_state.get("alert_level") == "high"
-    ), "Rule with 'exists' did not fire when a matching statement was added."
+    assert belief_system.world_state.get("alert_level") == "high", (
+        "Rule with 'exists' did not fire when a matching statement was added."
+    )
 
 
 def test_engine_supports_forall_quantifier_in_rule_condition():
     """
     Tests that a rule with a 'forall' quantifier is triggered correctly.
     """
-    domain_condition = Condition(verb="is", terms=["?x", "a", "raven"])
-    property_condition = Condition(verb="is", terms=["?x", "black"])
+    domain_condition = Condition(type="LEAF", verb="is", terms=["?x", "a", "raven"])
+    property_condition = Condition(type="LEAF", verb="is", terms=["?x", "black"])
 
     # This rule should only fire if all ravens are black.
     rule = Rule(
         condition=Condition(
-            forall_condition=(domain_condition, property_condition)
+            type="FORALL", children=[domain_condition, property_condition]
         ),
         consequences=[
             Effect(
@@ -660,10 +680,12 @@ def test_engine_supports_forall_quantifier_in_rule_condition():
         Statement(verb="is", terms=["huginn", "a", "raven"]),
         Statement(verb="is", terms=["huginn", "black"]),
         Statement(verb="is", terms=["muninn", "a", "raven"]),
-        Statement(verb="is", terms=["muninn", "white"]), # The conflicting fact
+        Statement(verb="is", terms=["muninn", "white"]),  # The conflicting fact
     ]
     belief_system_fail.simulate(statements_fail)
-    assert "conspiracy_formed" not in belief_system_fail.world_state, "Rule fired when not all items in domain matched the property."
+    assert "conspiracy_formed" not in belief_system_fail.world_state, (
+        "Rule fired when not all items in domain matched the property."
+    )
 
     # Scenario 2: All ravens are black (should fire)
     belief_system_success = BeliefSystem(
@@ -676,17 +698,19 @@ def test_engine_supports_forall_quantifier_in_rule_condition():
         Statement(verb="is", terms=["muninn", "black"]),
     ]
     belief_system_success.simulate(statements_success)
-    assert belief_system_success.world_state.get("conspiracy_formed") is True, "Rule did not fire when all items in domain matched."
+    assert belief_system_success.world_state.get("conspiracy_formed") is True, (
+        "Rule did not fire when all items in domain matched."
+    )
 
     # Scenario 3: Vacuous truth with no ravens (should fire)
     belief_system_vacuous = BeliefSystem(
         rules=[rule], contradiction_engine=ContradictionEngine()
     )
-    statements_vacuous = [
-        Statement(verb="is", terms=["odin", "a", "god"])
-    ]
+    statements_vacuous = [Statement(verb="is", terms=["odin", "a", "god"])]
     belief_system_vacuous.simulate(statements_vacuous)
-    assert belief_system_vacuous.world_state.get("conspiracy_formed") is True, "Rule did not fire for a vacuous truth (empty domain)."
+    assert belief_system_vacuous.world_state.get("conspiracy_formed") is True, (
+        "Rule did not fire for a vacuous truth (empty domain)."
+    )
 
 
 def test_engine_supports_count_quantifier_in_rule_condition():
@@ -695,10 +719,10 @@ def test_engine_supports_count_quantifier_in_rule_condition():
     """
     # This rule should fire if the number of knights is greater than 2.
     # We'll represent the count condition as a tuple: (Condition, operator_str, value)
-    count_sub_condition = Condition(verb="is", terms=["?x", "a", "knight"])
+    count_sub_condition = Condition(type="LEAF", verb="is", terms=["?x", "a", "knight"])
     rule = Rule(
         condition=Condition(
-            count_condition=(count_sub_condition, ">", 2)
+            type="COUNT", children=[count_sub_condition], operator=">", value=2
         ),
         consequences=[
             Effect(
@@ -720,14 +744,18 @@ def test_engine_supports_count_quantifier_in_rule_condition():
         Statement(verb="is", terms=["lancelot", "a", "knight"]),
     ]
     belief_system.simulate(statements_two_knights)
-    assert "defense_mode" not in belief_system.world_state, "Rule fired when count was not met."
+    assert "defense_mode" not in belief_system.world_state, (
+        "Rule fired when count was not met."
+    )
 
     # Scenario 2: Count becomes > 2 (should fire)
     statement_third_knight = [
         Statement(verb="is", terms=["arthur", "a", "knight"]),
     ]
     belief_system.simulate(statement_third_knight)
-    assert belief_system.world_state.get("defense_mode") == "high", "Rule did not fire when count was met."
+    assert belief_system.world_state.get("defense_mode") == "high", (
+        "Rule did not fire when count was met."
+    )
 
 
 def test_engine_supports_none_quantifier_in_rule_condition():
@@ -735,11 +763,9 @@ def test_engine_supports_none_quantifier_in_rule_condition():
     Tests that a rule with a 'none' quantifier is triggered correctly.
     """
     # This rule should fire if there are no traitors.
-    none_sub_condition = Condition(verb="is", terms=["?x", "a", "traitor"])
+    none_sub_condition = Condition(type="LEAF", verb="is", terms=["?x", "a", "traitor"])
     rule = Rule(
-        condition=Condition(
-            none_condition=none_sub_condition
-        ),
+        condition=Condition(type="NONE", children=[none_sub_condition]),
         consequences=[
             Effect(
                 target="world_state",
@@ -758,7 +784,9 @@ def test_engine_supports_none_quantifier_in_rule_condition():
         Statement(verb="is", terms=["gandalf", "a", "wizard"]),
     ]
     belief_system_success.simulate(statements_no_traitors)
-    assert belief_system_success.world_state.get("peace_declared") is True, "Rule did not fire when no matching statements existed."
+    assert belief_system_success.world_state.get("peace_declared") is True, (
+        "Rule did not fire when no matching statements existed."
+    )
 
     # Scenario 2: A traitor exists (should NOT fire)
     belief_system_fail = BeliefSystem(
@@ -768,7 +796,9 @@ def test_engine_supports_none_quantifier_in_rule_condition():
         Statement(verb="is", terms=["saruman", "a", "traitor"]),
     ]
     belief_system_fail.simulate(statements_with_traitor)
-    assert "peace_declared" not in belief_system_fail.world_state, "Rule fired when a matching statement existed."
+    assert "peace_declared" not in belief_system_fail.world_state, (
+        "Rule fired when a matching statement existed."
+    )
 
 
 def test_forall_quantifier_fails_with_negated_statement():
@@ -776,16 +806,14 @@ def test_forall_quantifier_fails_with_negated_statement():
     Tests that a 'forall' condition correctly fails when a fact that
     explicitly negates the property is present.
     """
-    domain_condition = Condition(verb="is", terms=["?x", "a", "ship"])
-    property_condition = Condition(verb="is", terms=["?x", "seaworthy"])
+    domain_condition = Condition(type="LEAF", verb="is", terms=["?x", "a", "ship"])
+    property_condition = Condition(type="LEAF", verb="is", terms=["?x", "seaworthy"])
 
     rule = Rule(
         condition=Condition(
-            forall_condition=(domain_condition, property_condition)
+            type="FORALL", children=[domain_condition, property_condition]
         ),
-        consequences=[
-            Statement(verb="is", terms=["fleet", "ready"])
-        ],
+        consequences=[Statement(verb="is", terms=["fleet", "ready"])],
     )
 
     belief_system = BeliefSystem(
@@ -803,4 +831,7 @@ def test_forall_quantifier_fails_with_negated_statement():
     sim_result = belief_system.simulate(facts)
 
     # The rule should NOT have fired.
-    assert Statement(verb="is", terms=["fleet", "ready"]) not in sim_result.derived_facts
+    assert (
+        Statement(verb="is", terms=["fleet", "ready"]) not in sim_result.derived_facts
+    )
+

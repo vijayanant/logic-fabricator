@@ -13,70 +13,49 @@ class IRTranslator:
 
     def translate_ir_condition(self, ir_condition: IRCondition) -> Condition:
         logger.info("Translating IRCondition", ir_condition=ir_condition)
-        if ir_condition.quantifier == "FORALL":
-            if not ir_condition.children or len(ir_condition.children) != 2:
-                raise ValueError(
-                    "FORALL condition must have exactly two children: domain and property."
-                )
-            domain_ir = ir_condition.children[0]
-            property_ir = ir_condition.children[1]
-            return Condition(
-                forall_condition=(
-                    self.translate_ir_condition(domain_ir),
-                    self.translate_ir_condition(property_ir),
-                )
-            )
-        elif ir_condition.quantifier == "EXISTS":
-            if not ir_condition.children or len(ir_condition.children) != 1:
-                raise ValueError(
-                    "EXISTS condition must have exactly one child: the sub-condition."
-                )
-            sub_ir_condition = ir_condition.children[0]
-            return Condition(
-                exists_condition=self.translate_ir_condition(sub_ir_condition)
-            )
-        elif ir_condition.quantifier == "COUNT":
-            if not ir_condition.children or len(ir_condition.children) != 1:
-                raise ValueError(
-                    "COUNT condition must have exactly one child: the sub-condition."
-                )
-            sub_ir_condition = ir_condition.children[0]
-            operator = ir_condition.operator
-            value = ir_condition.object
-            return Condition(
-                count_condition=(
-                    self.translate_ir_condition(sub_ir_condition),
-                    operator,
-                    value,
-                )
-            )
-        elif ir_condition.quantifier == "NONE":
-            if not ir_condition.children or len(ir_condition.children) != 1:
-                raise ValueError(
-                    "NONE condition must have exactly one child: the sub-condition."
-                )
-            sub_ir_condition = ir_condition.children[0]
-            return Condition(
-                none_condition=self.translate_ir_condition(sub_ir_condition)
-            )
-
-        # Quantifier checks are done. Now check operators.
-        elif ir_condition.operator == "LEAF":
+        
+        # Handle different types of conditions based on the 'type' field
+        if ir_condition.type == "LEAF":
             return self._translate_leaf_condition(ir_condition)
-        elif ir_condition.operator == "AND":
+        elif ir_condition.type == "AND":
             and_conditions = [
                 self.translate_ir_condition(child) for child in ir_condition.children
             ]
-            return Condition(and_conditions=and_conditions)
-        elif ir_condition.operator == "OR":
+            return Condition(type="AND", children=and_conditions)
+        elif ir_condition.type == "OR":
             # OR conditions are handled by _decompose_condition, which is called by translate_ir_rule
             # This method should not receive a top-level OR unless it's part of a recursive call
             raise UnsupportedIRFeatureError(
                 "Top-level OR operator in IRCondition should be handled by _decompose_condition."
             )
+        elif ir_condition.type in ["EXISTS", "FORALL", "COUNT", "NONE"]:
+            # Quantifier conditions
+            if ir_condition.type == "FORALL":
+                if not ir_condition.children or len(ir_condition.children) != 2:
+                    raise ValueError(
+                        "FORALL condition must have exactly two children: domain and property."
+                    )
+            elif not ir_condition.children or len(ir_condition.children) != 1:
+                raise ValueError(
+                    f"{ir_condition.type} condition must have exactly one child: the sub-condition."
+                )
+
+            translated_children = [
+                self.translate_ir_condition(child) for child in ir_condition.children
+            ]
+
+            if ir_condition.type == "COUNT":
+                return Condition(
+                    type="COUNT",
+                    children=translated_children,
+                    operator=ir_condition.operator,
+                    value=ir_condition.value,
+                )
+            else:
+                return Condition(type=ir_condition.type, children=translated_children)
         else:
             raise UnsupportedIRFeatureError(
-                f"Unsupported IRCondition type: {ir_condition.operator} or {ir_condition.quantifier}"
+                f"Unsupported IRCondition type: {ir_condition.type}"
             )
 
     def translate_ir_statement(self, ir_statement: IRStatement) -> Statement:
@@ -117,7 +96,7 @@ class IRTranslator:
             terms.extend(ir_condition.object.split())
         else:
             terms.append(ir_condition.object)
-        return Condition(verb=ir_condition.verb, terms=terms)
+        return Condition(type="LEAF", verb=ir_condition.verb, terms=terms)
 
     def _decompose_condition(self, ir_condition: IRCondition) -> List[List[Condition]]:
         """
@@ -128,18 +107,18 @@ class IRTranslator:
         logger.debug("Decomposing condition", ir_condition=ir_condition)
 
         # Base case: A LEAF or quantified condition is a DNF group of one.
-        if ir_condition.operator == "LEAF" or ir_condition.quantifier:
+        if ir_condition.type == "LEAF" or ir_condition.type in ["EXISTS", "FORALL", "COUNT", "NONE"]:
             logger.debug("Decomposition base case: LEAF or quantifier")
             return [[self.translate_ir_condition(ir_condition)]]
 
-        if ir_condition.operator == "OR":
+        if ir_condition.type == "OR":
             logger.debug("Decomposing OR operator")
             all_decomposed_groups = []
             for child in ir_condition.children:
                 all_decomposed_groups.extend(self._decompose_condition(child))
             return all_decomposed_groups
 
-        if ir_condition.operator == "AND":
+        if ir_condition.type == "AND":
             logger.debug("Decomposing AND operator")
             child_decompositions = [
                 self._decompose_condition(child) for child in ir_condition.children
@@ -154,7 +133,7 @@ class IRTranslator:
             return combined_groups
 
         raise UnsupportedIRFeatureError(
-            f"Unsupported IRCondition type for decomposition: {ir_condition.operator} or {ir_condition.quantifier}"
+            f"Unsupported IRCondition type for decomposition: {ir_condition.type}"
         )
 
     def translate_ir_rule(self, ir_rule: IRRule) -> List[Rule]:
@@ -175,7 +154,7 @@ class IRTranslator:
         translated_rules = []
         for group in decomposed_and_groups:
             if len(group) > 1:
-                final_condition = Condition(and_conditions=group)
+                final_condition = Condition(type="AND", children=group)
             else:
                 final_condition = group[0]
 

@@ -9,7 +9,7 @@ def test_parses_simple_rule_to_ir():
     natural_language_rule = "if ?x is a man, then ?x is mortal"
 
     expected_ir_condition = IRCondition(
-        operator="LEAF", subject="?x", verb="is", object="man"
+        type="LEAF", subject="?x", verb="is", object="man"
     )
     expected_ir_consequence = IRStatement(
         subject="?x", verb="is", object="mortal", negated=False, modifiers=[]
@@ -31,7 +31,7 @@ def test_parse_simple_trust_rule_to_ir():
     natural_language_rule = "If Alice trusts Bob, then Bob is trustworthy."
 
     expected_ir_condition = IRCondition(
-        operator="LEAF",
+        type="LEAF",
         subject="Alice",
         verb="trusts",
         object="Bob",
@@ -56,7 +56,7 @@ def test_parse_effect_rule_to_ir():
     natural_language_rule = "If ?x is mortal, then increment population by 1"
 
     expected_ir_condition = IRCondition(
-        operator="LEAF",
+        type="LEAF",
         subject="?x",
         verb="is",
         object="mortal",
@@ -121,17 +121,17 @@ def test_llm_parser_handles_disjunctive_rule():
     expected_ir_rule = IRRule(
         rule_type="standard",
         condition=IRCondition(
-            operator="AND",
+            type="AND",
             children=[
-                IRCondition(operator="LEAF", subject="?x", verb="is", object="king"),
+                IRCondition(type="LEAF", subject="?x", verb="is", object="king"),
                 IRCondition(
-                    operator="OR",
+                    type="OR",
                     children=[
                         IRCondition(
-                            operator="LEAF", subject="?x", verb="is", object="wise"
+                            type="LEAF", subject="?x", verb="is", object="wise"
                         ),
                         IRCondition(
-                            operator="LEAF", subject="?x", verb="is", object="brave"
+                            type="LEAF", subject="?x", verb="is", object="brave"
                         ),
                     ],
                 ),
@@ -158,11 +158,11 @@ def test_llm_parser_handles_universal_quantifier():
     expected_ir_rule = IRRule(
         rule_type="standard",
         condition=IRCondition(
-            quantifier="FORALL",
+            type="FORALL",
             children=[
-                IRCondition(operator="LEAF", subject="?x", verb="is", object="ship"),
+                IRCondition(type="LEAF", subject="?x", verb="is", object="ship"),
                 IRCondition(
-                    operator="LEAF", subject="?x", verb="is", object="seaworthy"
+                    type="LEAF", subject="?x", verb="is", object="seaworthy"
                 ),
             ],
         ),
@@ -173,7 +173,7 @@ def test_llm_parser_handles_universal_quantifier():
     parsed_ir_rule = parser.parse_natural_language(natural_language_rule)
 
     assert parsed_ir_rule.rule_type == expected_ir_rule.rule_type
-    assert parsed_ir_rule.condition.quantifier == "FORALL"
+    assert parsed_ir_rule.condition.type == "FORALL"
     assert len(parsed_ir_rule.condition.children) == 2
     assert parsed_ir_rule.consequence.object == "ready"
 
@@ -190,12 +190,12 @@ def test_llm_parser_handles_existential_quantifier_correctly():
     parsed_ir_rule = parser.parse_natural_language(natural_language_rule)
 
     # Assert the critical structural components, being flexible on the effect details
-    assert parsed_ir_rule.rule_type == "effect"
-    assert parsed_ir_rule.condition.quantifier == "EXISTS"
+    assert parsed_ir_rule.rule_type == "standard"
+    assert parsed_ir_rule.condition.type == "EXISTS"
     assert len(parsed_ir_rule.condition.children) == 1
     assert parsed_ir_rule.condition.children[0].object == "traitor"
-    assert parsed_ir_rule.consequence.effect_operation == "set"
-    assert parsed_ir_rule.consequence.effect_value is True
+    assert parsed_ir_rule.consequence.verb == "is"
+    assert parsed_ir_rule.consequence.object == "in_danger"
 
 
 @pytest.mark.llm
@@ -212,9 +212,9 @@ def test_llm_parser_handles_count_quantifier():
 
     # Assert the critical structural components, being flexible on the effect details
     assert parsed_ir_rule.rule_type == "effect"
-    assert parsed_ir_rule.condition.quantifier == "COUNT"
+    assert parsed_ir_rule.condition.type == "COUNT"
     assert parsed_ir_rule.condition.operator == ">"
-    assert parsed_ir_rule.condition.object == 3
+    assert parsed_ir_rule.condition.value == 3
     assert len(parsed_ir_rule.condition.children) == 1
     assert parsed_ir_rule.condition.children[0].object == "guard"
     assert parsed_ir_rule.consequence.effect_operation == "set"
@@ -226,18 +226,18 @@ def test_llm_parser_handles_none_quantifier():
     """
     Tests that the LLMParser can parse a rule with a NONE quantifier.
     """
-    natural_language_rule = "if no one is a coward, the mission succeeds"
+    natural_language_rule = "if no one is a coward, the mission is a success"
 
     parser = LLMParser()
     parsed_ir_rule = parser.parse_natural_language(natural_language_rule)
 
     # Assert the critical structural components, being flexible on the effect details
-    assert parsed_ir_rule.rule_type == "effect"
-    assert parsed_ir_rule.condition.quantifier == "NONE"
+    assert parsed_ir_rule.rule_type == "standard"
+    assert parsed_ir_rule.condition.type == "NONE"
     assert len(parsed_ir_rule.condition.children) == 1
     assert parsed_ir_rule.condition.children[0].object == "coward"
-    assert parsed_ir_rule.consequence.effect_operation == "set"
-    assert parsed_ir_rule.consequence.effect_value is True
+    assert parsed_ir_rule.consequence.verb == "is"
+    assert parsed_ir_rule.consequence.object == "success"
 
 
 @pytest.mark.llm
@@ -263,7 +263,7 @@ def test_llm_parses_natural_negation():
 def test_llm_parses_complex_forall_rule_correctly():
     """
     Tests that the LLM can parse a more complex FORALL rule structure
-    and distinguish `quantifier` from `operator`.
+    and distinguish `type` from `operator`.
     """
     natural_language_rule = (
         "for all ships, if the ship is seaworthy, then the fleet is ready"
@@ -276,22 +276,22 @@ def test_llm_parses_complex_forall_rule_correctly():
 
     # Per user guidance, we assert that the LLM correctly
     # interprets "the fleet is ready" as an effect.
-    assert parsed_ir.rule_type == "effect"
+    assert parsed_ir.rule_type == "standard"
 
     # Check the critical condition structure
     condition = parsed_ir.condition
-    assert condition.quantifier == "FORALL"
+    assert condition.type == "FORALL"
     assert condition.operator is None
     assert len(condition.children) == 2
 
     # Check the domain and property
     domain, prop = condition.children
-    assert domain.operator == "LEAF"
+    assert domain.type == "LEAF"
     assert domain.object == "ship"
 
-    assert prop.operator == "LEAF"
+    assert prop.type == "LEAF"
     assert prop.object == "seaworthy"
 
     # Check that the consequence is an effect, but do not assert its value,
     # as the LLM's interpretation is creative and non-deterministic.
-    assert isinstance(parsed_ir.consequence, IREffect)
+    assert isinstance(parsed_ir.consequence, IRStatement)

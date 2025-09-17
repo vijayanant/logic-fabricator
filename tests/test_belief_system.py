@@ -14,11 +14,7 @@ from logic_fabricator.core_types import (
 )
 
 
-
-
-
 def test_belief_system_forks_on_contradiction():
-    
     statement1 = Statement(verb="is", terms=["Socrates", "alive"])
     statement2 = Statement(verb="is", terms=["Socrates", "alive"], negated=True)
     engine = ContradictionEngine()
@@ -33,16 +29,12 @@ def test_belief_system_forks_on_contradiction():
     assert statement2 in forked_belief_system.statements
 
 
-
-
-
 def test_belief_system_forks_when_rule_consequence_is_a_contradiction():
-    
     existing_statement = Statement(verb="is", terms=["Socrates", "mortal"])
     belief_system = BeliefSystem(rules=[], contradiction_engine=ContradictionEngine())
     belief_system.add_statement(existing_statement)
     rule = Rule(
-        condition=Condition(verb="is", terms=["?x", "a man"]),
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
         consequences=[Statement(verb="is", terms=["?x", "mortal"], negated=True)],
     )
     belief_system.rules.append(rule)
@@ -58,8 +50,3 @@ def test_belief_system_forks_when_rule_consequence_is_a_contradiction():
     assert contradictory_statement not in belief_system.statements
     assert existing_statement in forked_system.statements
     assert contradictory_statement in forked_system.statements
-
-
-
-
-

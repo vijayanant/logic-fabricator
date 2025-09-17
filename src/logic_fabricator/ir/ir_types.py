@@ -5,14 +5,15 @@ class IRBase:
     pass
 
 class IRCondition(IRBase):
-    def __init__(self, operator: Optional[str] = None, children: Optional[List['IRCondition']] = None,
+    def __init__(self, type: str, children: Optional[List['IRCondition']] = None,
                  subject: Optional[str] = None, verb: Optional[str] = None, object: Optional[Union[str, List[str]]] = None,
                  negated: bool = False,
                  modifiers: Optional[List[str]] = None,
                  exceptions: Optional[List['IRCondition']] = None,
-                 quantifier: Optional[str] = None):
+                 operator: Optional[str] = None, # For COUNT
+                 value: Optional[int] = None): # For COUNT
 
-        self.quantifier = quantifier
+        self.type = type
         self.children = children if children is not None else []
         self.subject = subject
         self.verb = verb
@@ -20,19 +21,14 @@ class IRCondition(IRBase):
         self.negated = negated
         self.modifiers = modifiers if modifiers is not None else []
         self.exceptions = exceptions if exceptions is not None else []
-
-        # A condition cannot be both a quantifier and a branch/leaf,
-        # with the exception of COUNT, which uses the operator field.
-        if self.quantifier and self.quantifier != "COUNT":
-            self.operator = None
-        else:
-            self.operator = operator or 'LEAF'
+        self.operator = operator
+        self.value = value
 
     def __eq__(self, other):
         if not isinstance(other, IRCondition):
             return NotImplemented
         
-        return (self.operator == other.operator and
+        return (self.type == other.type and
                 self.subject == other.subject and
                 self.verb == other.verb and
                 self.object == other.object and
@@ -40,27 +36,47 @@ class IRCondition(IRBase):
                 self.modifiers == other.modifiers and
                 self.exceptions == other.exceptions and
                 self.children == other.children and
-                self.quantifier == other.quantifier) # NEW COMPARISON
+                self.operator == other.operator and
+                self.value == other.value)
 
     def __repr__(self):
-        return f"IRCondition({self.__dict__})"
+        return f"IRCondition({self.type}={self.__dict__})"
 
     @classmethod
     def from_dict(cls, data: dict) -> 'IRCondition':
+        ir_type = data["type"]
         children = [cls.from_dict(c) for c in data.get('children', [])]
-        exceptions = [cls.from_dict(e) for e in data.get('exceptions', [])]
         
-        return cls(
-            operator=data.get('operator', 'LEAF'), # Default to LEAF
-            children=children,
-            subject=data.get('subject'),
-            verb=data.get('verb'),
-            object=data.get('object'),
-            negated=data.get('negated', False),
-            modifiers=data.get('modifiers', []),
-            exceptions=exceptions,
-            quantifier=data.get('quantifier') # NEW FIELD
-        )
+        # Common fields
+        common_args = {
+            "children": children,
+            "negated": data.get('negated', False),
+            "modifiers": data.get('modifiers', []),
+            "exceptions": [cls.from_dict(e) for e in data.get('exceptions', [])]
+        }
+
+        if ir_type == 'LEAF':
+            return cls(
+                type=ir_type,
+                subject=data.get('subject'),
+                verb=data.get('verb'),
+                object=data.get('object'),
+                **common_args
+            )
+        elif ir_type in ['AND', 'OR', 'EXISTS', 'FORALL', 'NONE']:
+            return cls(
+                type=ir_type,
+                **common_args
+            )
+        elif ir_type == 'COUNT':
+            return cls(
+                type=ir_type,
+                operator=data.get('operator'),
+                value=data.get('value'),
+                **common_args
+            )
+        else:
+            raise ValueError(f"Unknown IRCondition type: {ir_type}")
 
 class IRStatement(IRBase):
     def __init__(self, subject: str, verb: str, object: Union[str, List[str]], negated: bool = False,

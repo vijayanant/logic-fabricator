@@ -20,65 +20,25 @@
   "required": ["input_type", "data"],
   "definitions": {
     "IRCondition": {
-      "description": "A condition can be a simple leaf, a complex branch (AND/OR), or a quantified condition (EXISTS/FORALL).",
-      "oneOf": [
-        { "$ref": "#/definitions/IRLeafCondition" },
-        { "$ref": "#/definitions/IRBranchCondition" },
-        { "$ref": "#/definitions/IRQuantifierCondition" }
-      ]
-    },
-    "IRLeafCondition": {
       "type": "object",
       "properties": {
-        "operator": {
+        "type": {
           "type": "string",
-          "const": "LEAF"
-        },
-        "subject": {
-          "type": "string",
-          "description": "The subject of the condition. Use variable names like \"?x\" if present."
-        },
-        "verb": {
-          "type": "string",
-          "description": "The main verb of the condition."
-        },
-        "object": {
-          "type": "string",
-          "description": "The object of the condition. Use variable names like \"?y\" if present."
-        },
-        "negated": {
-          "type": "boolean",
-          "default": false,
-          "description": "True if the condition is negated (e.g., \"if not X\")."
-        }
-      },
-      "required": ["operator", "subject", "verb", "object"]
-    },
-    "IRQuantifierCondition": {
-      "type": "object",
-      "properties": {
-        "quantifier": {
-          "type": "string",
-          "enum": ["EXISTS", "FORALL", "COUNT", "NONE"],
-          "description": "A quantifier that operates on child conditions."
+          "enum": ["LEAF", "AND", "OR", "EXISTS", "FORALL", "COUNT", "NONE"]
         },
         "children": {
           "type": "array",
-          "items": {
-            "$ref": "#/definitions/IRCondition"
-          },
-          "description": "For EXISTS/NONE/COUNT: one child. For FORALL: two children (domain, property)."
+          "items": { "$ref": "#/definitions/IRCondition" }
         },
-        "operator": {
-          "type": "string",
-          "description": "For COUNT quantifier, this holds the comparison operator (e.g., '>', '<', '==')."
-        },
-        "object": {
-          "type": "number",
-          "description": "For COUNT quantifier, this holds the number to compare against."
-        }
+        "subject": { "type": "string" },
+        "verb": { "type": "string" },
+        "object": { "type": ["string", "number", "boolean", "array"] },
+        "negated": { "type": "boolean", "default": false },
+        "operator": { "type": "string", "description": "For COUNT type, this holds the comparison operator (e.g., '>', '<=')." },
+        "value": { "type": "number", "description": "For COUNT type, this holds the number to compare against." }
       },
-      "required": ["quantifier", "children"]
+      "required": ["type"],
+      "description": "A unified condition structure. The 'type' field determines its specific properties."
     },
     "IRBranchCondition": {
       "type": "object",

@@ -10,6 +10,7 @@ from logic_fabricator.fabric import SimulationRecord, Statement, Rule, Condition
 def mock_load_config(monkeypatch):
     """Mocks the load_config function to avoid dependency on environment variables."""
     from logic_fabricator.config import Config
+
     def mock_config():
         return Config(
             llm_provider="mock",
@@ -18,6 +19,7 @@ def mock_load_config(monkeypatch):
             llm_base_url=None,
             llm_max_attempts=1,
         )
+
     monkeypatch.setattr("logic_fabricator.llm_parser.load_config", mock_config)
 
 
@@ -41,9 +43,10 @@ def mock_mcp(monkeypatch):
     """
     Mocks the MCP and its underlying Neo4j driver to prevent actual database connections.
     """
+
     class MockSession:
         def run(self, *args, **kwargs):
-            return [] # Return empty list for queries
+            return []  # Return empty list for queries
 
         def __enter__(self):
             return self
@@ -74,9 +77,16 @@ def mock_mcp(monkeypatch):
 
         def get_simulation_history(self, *args, **kwargs):
             # Create a mock SimulationRecord that matches the expected output
-            mock_statement = Statement(verb="is", terms=["Socrates", "a_man"], negated=False, priority=1.0)
-            mock_derived_fact = Statement(verb="is", terms=["Socrates", "mortal"], negated=False, priority=1.0)
-            mock_rule = Rule(condition=Condition(verb="is", terms=["?x", "a_man"]), consequences=[Statement(verb="is", terms=["?x", "mortal"])])
+            mock_statement = Statement(
+                verb="is", terms=["Socrates", "a_man"], negated=False, priority=1.0
+            )
+            mock_derived_fact = Statement(
+                verb="is", terms=["Socrates", "mortal"], negated=False, priority=1.0
+            )
+            mock_rule = Rule(
+                condition=Condition(type="LEAF", verb="is", terms=["?x", "a_man"]),
+                consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+            )
 
             mock_record = SimulationRecord(
                 belief_system_id="mock_belief_system_id",
@@ -91,7 +101,9 @@ def mock_mcp(monkeypatch):
             pass
 
     monkeypatch.setattr("logic_fabricator.mcp.MCP", MockMCP)
-    monkeypatch.setattr("neo4j.GraphDatabase", MockGraphDatabase) # Mock the entire GraphDatabase object
+    monkeypatch.setattr(
+        "neo4j.GraphDatabase", MockGraphDatabase
+    )  # Mock the entire GraphDatabase object
 
 
 def test_history_command_prints_mcp_records(mock_llm_parser, mock_mcp):
@@ -107,9 +119,10 @@ def test_history_command_prints_mcp_records(mock_llm_parser, mock_mcp):
 
         # Add a rule to ensure derived facts
         from logic_fabricator.fabric import Rule, Condition, Statement
+
         workbench.belief_system.rules.append(
             Rule(
-                condition=Condition(verb="is", terms=["?x", "a_man"]),
+                condition=Condition(type="LEA", verb="is", terms=["?x", "a_man"]),
                 consequences=[Statement(verb="is", terms=["?x", "mortal"])],
             )
         )

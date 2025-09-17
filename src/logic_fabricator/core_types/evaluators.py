@@ -112,25 +112,26 @@ class ConjunctiveConditionEvaluator(BaseEvaluator):
 
     def evaluate(self, condition: "Condition", known_facts: set["Statement"]) -> dict | None:
         return self._find_consistent_bindings(
-            condition.and_conditions, list(known_facts), {}
+            condition.children, list(known_facts), {}
         )
 
 class ExistentialConditionEvaluator(BaseEvaluator):
     """Evaluates a condition that checks for the existence of a matching statement."""
 
     def evaluate(self, condition: "Condition", known_facts: set["Statement"]) -> dict | None:
+        sub_condition = condition.children[0]
         for fact in known_facts:
-            if self._match_single_condition(condition.exists_condition, fact):
+            if self._match_single_condition(sub_condition, fact):
                 return {}
         return None
 
 import operator
 
 class UniversalConditionEvaluator(BaseEvaluator):
-    """Evaluates a condition that checks if all members of a domain have a property.""" 
+    """Evaluates a condition that checks if all members of a domain have a property."""
 
     def evaluate(self, condition: "Condition", known_facts: set["Statement"]) -> dict | None:
-        domain_cond, property_cond = condition.forall_condition
+        domain_cond, property_cond = condition.children
         domain_bindings = [
             b
             for b in (self._match_single_condition(domain_cond, fact) for fact in known_facts)
@@ -170,7 +171,9 @@ class CountConditionEvaluator(BaseEvaluator):
         }
 
     def evaluate(self, condition: "Condition", known_facts: set["Statement"]) -> dict | None:
-        sub_condition, op_str, value = condition.count_condition
+        sub_condition = condition.children[0]
+        op_str = condition.operator
+        value = condition.value
         
         count = sum(
             1 for fact in known_facts if self._match_single_condition(sub_condition, fact) is not None
@@ -191,7 +194,8 @@ class NoneConditionEvaluator(BaseEvaluator):
     """Evaluates a condition that checks for the absence of a matching statement."""
 
     def evaluate(self, condition: "Condition", known_facts: set["Statement"]) -> dict | None:
+        sub_condition = condition.children[0]
         for fact in known_facts:
-            if self._match_single_condition(condition.none_condition, fact):
+            if self._match_single_condition(sub_condition, fact):
                 return None  # Found one, so the 'none' condition is false
         return {}  # Found no matches, so the 'none' condition is true
