@@ -1,10 +1,12 @@
 import json
+import uuid
 
 
 class Statement:
     def __init__(
-        self, verb: str, terms: list[str], negated: bool = False, priority: float = 1.0
+        self, verb: str, terms: list[str], negated: bool = False, priority: float = 1.0, id: uuid.UUID = None
     ):
+        self.id = id or uuid.uuid4()
         self.verb = verb
         self.terms = terms
         self.negated = negated
@@ -15,8 +17,7 @@ class Statement:
         return f"({neg_str}{self.verb} {' '.join(self.terms)})"
 
     def __repr__(self):
-        neg_str = "NOT " if self.negated else ""
-        return f"Statement({neg_str}{self.verb} {self.terms}, neg={self.negated}, prio={self.priority})"
+        return f"Statement({self.verb} {self.terms}, neg={self.negated}, prio={self.priority})"
 
     def __eq__(self, other):
         if not isinstance(other, Statement):
@@ -33,6 +34,7 @@ class Statement:
 
     def to_dict(self):
         return {
+            "id": str(self.id),
             "verb": self.verb,
             "terms": self.terms,
             "negated": self.negated,
@@ -44,4 +46,6 @@ class Statement:
 
     @classmethod
     def from_dict(cls, data: dict):
+        if 'id' in data:
+            data['id'] = uuid.UUID(data['id'])
         return cls(**data)

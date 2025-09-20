@@ -82,3 +82,15 @@ Contradictions are treated as first-class events, not errors.
   - `PRESERVE`: Reject the new, contradictory fact and do not fork.
   - `PRIORITIZE_NEW`: Fork, but give the new fact a higher priority in the new reality.
   - `PRIORITIZE_OLD`: Fork, but give the original fact a higher priority in the new reality.
+
+---
+
+## 6. Object Identity: The Soul and the Substance
+
+A crucial feature of the Logic Fabricator is how it defines the identity of its core concepts.
+
+- **Content as Identity (Value Objects):** A `Statement` or `Rule` is defined by its logical content. Two `Statement` objects that say the exact same thing (e.g., same verb, terms, and negation) are considered equal (`s1 == s2` is `True`). This is essential for logical operations like contradiction detection and for ensuring a `BeliefSystem` only contains a unique fact once.
+
+- **Persistent ID as Soul:** At the same time, every `Statement` and `Rule` object is created with a unique identifier (`.id`). This `id` is not used for logical equality checks. Instead, it serves as the object's unique key in the persistence layer, allowing the MCP to track the history and lineage of a specific logical entity across different belief systems and simulations.
+
+This dual system provides the best of both worlds: logical operations work on the substance of the ideas, while the persistence layer can track the history of each individual instance.

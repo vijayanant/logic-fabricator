@@ -220,3 +220,29 @@ def test_statement_persistence_handles_all_attributes(db_adapter):
     assert loaded_statement.negated == original_statement.negated
     assert loaded_statement.priority == original_statement.priority
 
+
+def test_simulate_creates_full_graph_history(mcp_fixture, db_adapter):
+    """
+    Asserts that MCP.simulate creates a rich graph history of the simulation event,
+    which can be verified by the adapter.
+    """
+    # ARRANGE
+    mcp = mcp_fixture
+    bs_id = mcp.create_belief_system("History Test System")
+    
+    rule = Rule(
+        condition=Condition(type="LEAF", verb="is", terms=["?x", "a man"]),
+        consequences=[Statement(verb="is", terms=["?x", "mortal"])],
+    )
+    mcp.add_rule(bs_id, rule)
+    
+    initial_statement = Statement(verb="is", terms=["Socrates", "a man"])
+
+    # ACT
+    sim_record = mcp.simulate(bs_id, [initial_statement])
+
+    # ASSERT
+    # This assertion now works for both the mock and the real adapter.
+    assert db_adapter.verify_simulation_graph(sim_record), \
+        "The adapter could not verify the integrity of the persisted simulation graph."
+

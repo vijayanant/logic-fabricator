@@ -51,3 +51,12 @@ Implementing the `ContradictionEngine` made us aware of its reactive nature, whi
 -   **Potential Features:**
     -   A tool that could scan a rule set and issue warnings like, "Caution: High logical tension detected between Rule 5 and Rule 12. These rules may conflict under certain conditions."
     -   This would empower users to build more robust or, alternatively, more deliberately paradoxical and interesting logic worlds.
+
+### 4. Canonical, Content-Addressable Logic
+
+-   **The Concept:** Every unique `Statement` and `Rule` exists as only one, canonical node in the database. The identity of a piece of logic *is* its content. Different `BeliefSystem`s (branches) can then point to these shared, canonical nodes. This is analogous to Git storing a file's content once as a "blob" and referencing it from multiple commits or branches.
+-   **The Emergence:** This concept was not a top-down design goal but emerged organically from the bottom-up process of solving our TDD cycle. When our tests for persistence and equality started failing, we were forced to confront the meaning of identity in our system. The most robust solution was to make the persistence layer `MERGE` on content, which naturally produced this canonical, content-addressable architecture.
+-   **Potential Features:** This model is incredibly powerful for future analysis. It turns our database from a simple record of events into a web of interconnected ideas, allowing us to ask profound questions like:
+    -   "Show me all belief systems that share this specific rule."
+    -   "What is the set of all facts that `BeliefSystem_A` and `BeliefSystem_B` agree on?"
+    -   "Which rules are most central or widely believed across the entire logic-space?"

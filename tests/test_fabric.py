@@ -555,7 +555,13 @@ def test_statement_to_dict_json():
         "negated": False,
         "priority": 1.0,
     }
-    assert s.to_dict_json() == json.dumps(expected_dict)
+    
+    result_dict = json.loads(s.to_dict_json())
+    assert "id" in result_dict
+    assert result_dict["verb"] == expected_dict["verb"]
+    assert result_dict["terms"] == expected_dict["terms"]
+    assert result_dict["negated"] == expected_dict["negated"]
+    assert result_dict["priority"] == expected_dict["priority"]
 
     s_negated = Statement(verb="is", terms=["sky", "blue"], negated=True, priority=0.5)
     expected_dict_negated = {
@@ -564,7 +570,12 @@ def test_statement_to_dict_json():
         "negated": True,
         "priority": 0.5,
     }
-    assert s_negated.to_dict_json() == json.dumps(expected_dict_negated)
+    result_dict_negated = json.loads(s_negated.to_dict_json())
+    assert "id" in result_dict_negated
+    assert result_dict_negated["verb"] == expected_dict_negated["verb"]
+    assert result_dict_negated["terms"] == expected_dict_negated["terms"]
+    assert result_dict_negated["negated"] == expected_dict_negated["negated"]
+    assert result_dict_negated["priority"] == expected_dict_negated["priority"]
 
 
 def test_condition_to_dict_json():

@@ -25,7 +25,7 @@ The core logic engine is now functional. It currently supports:
 - **Multi-Level Contradiction Detection:** The system identifies and handles direct contradictions between statements, and can also proactively detect latent conflicts between the rules themselves based on their logical implications.
 - **Inference Chaining:** A `SimulationEngine` that can process a sequence of statements and chain multiple rules together to derive new facts.
 - **World State Effects:** The ability for rules to have `Effects` that directly modify a key-value `world_state`, allowing simulations to track and change state over time.
-- **Traceability:** The results of a simulation include a record of which rules were applied to reach the conclusion.
+- **Persistent & Queryable History:** The full causal chain of every simulation is recorded in a graph database. This includes the specific `BeliefSystem` (identified by its unique ID) used, the initial statements, the rules that were applied, and all derived facts, creating a complete, auditable history of logical events.
 - **Contradiction Forking:** When a contradiction is detected, the system can create a new, divergent belief system (a "fork") to explore alternative logical realities.
 
 ---

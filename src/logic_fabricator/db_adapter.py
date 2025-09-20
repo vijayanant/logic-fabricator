@@ -31,3 +31,6 @@ class DatabaseAdapter(Protocol):
 
     def close(self):
         ...
+
+    def verify_simulation_graph(self, simulation_record: SimulationRecord) -> bool:
+        ...

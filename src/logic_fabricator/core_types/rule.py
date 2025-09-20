@@ -1,4 +1,5 @@
 import json
+import uuid
 import structlog
 
 from .condition import Condition
@@ -8,7 +9,8 @@ logger = structlog.get_logger(__name__)
 
 
 class Rule:
-    def __init__(self, condition: Condition, consequences: list):
+    def __init__(self, condition: Condition, consequences: list, id: uuid.UUID = None):
+        self.id = id or uuid.uuid4()
         self.condition = condition
         self.consequences = consequences
 
@@ -34,6 +36,7 @@ class Rule:
 
     def to_dict(self):
         return {
+            "id": str(self.id),
             "condition": self.condition.to_dict(),
             "consequences": [c.to_dict() for c in self.consequences],
         }
@@ -43,9 +46,11 @@ class Rule:
 
     @classmethod
     def from_dict(cls, data: dict):
+        if 'id' in data:
+            data['id'] = uuid.UUID(data['id'])
         condition = Condition.from_dict(data["condition"])
         consequences = [Statement.from_dict(s_dict) for s_dict in data["consequences"]]
-        return cls(condition=condition, consequences=consequences)
+        return cls(condition=condition, consequences=consequences, id=data.get('id'))
 
     def applies_to(self, statements: list["Statement"]) -> dict | None:
         logger.debug(

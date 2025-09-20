@@ -43,12 +43,18 @@ class Neo4jAdapter(DatabaseAdapter):
 
     def add_rule(self, belief_system_id: str, rule: Rule):
         with self._driver.session() as session:
+            condition_json = json.dumps(rule.condition.to_dict())
+            consequences_json = json.dumps([c.to_dict() for c in rule.consequences])
             session.run(
-                f"MATCH (bs:BeliefSystem {{id: $bs_id}}) CREATE (r:Rule {{id: $rule_id, condition_json: $condition_json, consequences_json: $consequences_json}}) CREATE (bs)-[:{self.REL_CONTAINS_RULE}]->(r)",
+                f"""MERGE (r:Rule {{condition_json: $condition_json, consequences_json: $consequences_json}})
+                   ON CREATE SET r.id = $rule_id
+                   WITH r
+                   MATCH (bs:BeliefSystem {{id: $bs_id}})
+                   MERGE (bs)-[:{self.REL_CONTAINS_RULE}]->(r)""",
                 bs_id=belief_system_id,
-                rule_id=str(uuid.uuid4()),
-                condition_json=json.dumps(rule.condition.to_dict()),
-                consequences_json=json.dumps([c.to_dict() for c in rule.consequences]),
+                rule_id=str(rule.id),
+                condition_json=condition_json,
+                consequences_json=consequences_json,
             )
         logger.info("Rule added and persisted.", rule=rule, belief_system_id=belief_system_id)
 
@@ -105,20 +111,20 @@ class Neo4jAdapter(DatabaseAdapter):
 
     def save_statement(self, statement: Statement) -> str:
         with self._driver.session() as session:
-            stmt_id = str(uuid.uuid4())
-            properties = {
-                "id": stmt_id,
-                "verb": statement.verb,
-                "terms_json": json.dumps(statement.terms),
-                "negated": statement.negated,
-                "priority": statement.priority,
-            }
-            session.run(
-                "MERGE (st:Statement {id: $id}) SET st += $props",
-                id=stmt_id,
-                props=properties,
+            terms_json = json.dumps(statement.terms)
+            result = session.run(
+                """MERGE (st:Statement {verb: $verb, terms_json: $terms_json, negated: $negated})
+                   ON CREATE SET st.id = $id, st.priority = $priority
+                   RETURN st.id AS id""",
+                verb=statement.verb,
+                terms_json=terms_json,
+                negated=statement.negated,
+                id=str(statement.id),
+                priority=statement.priority,
             )
-            return stmt_id
+            # Get the ID of the merged node, whether it was created or matched.
+            record = result.single()
+            return record["id"]
 
     def load_statement(self, statement_id: str) -> Statement | None:
         with self._driver.session() as session:
@@ -127,6 +133,7 @@ class Neo4jAdapter(DatabaseAdapter):
             if record:
                 node = record["st"]
                 return Statement(
+                    id=uuid.UUID(node["id"]),
                     verb=node["verb"],
                     terms=json.loads(node["terms_json"]),
                     negated=node["negated"],
@@ -135,17 +142,18 @@ class Neo4jAdapter(DatabaseAdapter):
             return None
 
     def _persist_rule(self, session, rule: Rule, simulation_id: str, relationship_type: str):
-        rule_id = str(uuid.uuid4())
+        condition_json = json.dumps(rule.condition.to_dict())
+        consequences_json = json.dumps([c.to_dict() for c in rule.consequences])
         session.run(
-            "MERGE (r:Rule {id: $id}) ON CREATE SET r.condition_json = $condition_json, r.consequences_json = $consequences_json",
-            id=rule_id,
-            condition_json=json.dumps(rule.condition.to_dict()),
-            consequences_json=json.dumps([c.to_dict() for c in rule.consequences]),
-        )
-        session.run(
-            f"MATCH (s:Simulation {{id: $s_id}}), (r:Rule {{id: $r_id}}) CREATE (s)-[:{relationship_type}]->(r)",
+            f"""MERGE (r:Rule {{condition_json: $condition_json, consequences_json: $consequences_json}})
+               ON CREATE SET r.id = $rule_id
+               WITH r
+               MATCH (s:Simulation {{id: $s_id}})
+               MERGE (s)-[:{relationship_type}]->(r)""",
             s_id=simulation_id,
-            r_id=rule_id,
+            rule_id=str(rule.id),
+            condition_json=condition_json,
+            consequences_json=consequences_json,
         )
 
     def get_simulation_history(self, belief_system_id: str) -> list[SimulationRecord]:
@@ -186,3 +194,31 @@ class Neo4jAdapter(DatabaseAdapter):
                 )
                 history.append(sim_record)
         return history
+
+    def verify_simulation_graph(self, simulation_record: SimulationRecord) -> bool:
+        with self._driver.session() as session:
+            bs_id = str(simulation_record.belief_system_id)
+
+            # This is the query from our test, now properly encapsulated.
+            result = session.run("""
+                MATCH (sim:Simulation {id: $sim_id})
+                MATCH (bs:BeliefSystem {id: $bs_id})
+                MATCH (intro_stmt:Statement {id: $intro_id})
+                MATCH (derived_stmt:Statement {id: $derived_id})
+                MATCH (rule_node:Rule {id: $rule_id})
+                
+                MATCH (sim)-[:USED]->(bs)
+                MATCH (sim)-[:INTRODUCED]->(intro_stmt)
+                MATCH (sim)-[:APPLIED_RULE]->(rule_node)
+                MATCH (sim)-[:DERIVED_FACT]->(derived_stmt)
+                
+                RETURN sim
+            """, {
+                "sim_id": str(simulation_record.id),
+                "bs_id": bs_id,
+                "intro_id": str(simulation_record.initial_statements[0].id),
+                "derived_id": str(simulation_record.derived_facts[0].id),
+                "rule_id": str(simulation_record.applied_rules[0].id)
+            }).single()
+            
+            return result is not None
